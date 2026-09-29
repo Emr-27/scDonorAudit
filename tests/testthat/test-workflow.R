@@ -1,0 +1,477 @@
+make_fixture <- function(paired = FALSE, missing_pair = FALSE) {
+    set.seed(1103)
+    donor <- if (paired) rep(paste0("d", 1:4), each = 2) else paste0("d", 1:8)
+    condition <- if (paired) rep(c("ctrl", "stim"), 4) else
+        rep(c("ctrl", "stim"), each = 4)
+    samples <- paste0("s", seq_along(donor))
+    sample_table <- data.frame(sample_id = samples, donor_id = donor,
+                               condition = condition)
+    keep <- if (missing_pair) seq_along(samples) != 8L else
+        rep(TRUE, length(samples))
+    values <- matrix(rnbinom(250 * sum(keep), mu = 25, size = 5),
+        nrow = 250, dimnames = list(paste0("g", seq_len(250)), samples[keep]))
+    col_data <- S4Vectors::DataFrame(sample_id = samples[keep],
+        donor_id = donor[keep], condition = condition[keep],
+        cell_type = rep("T", sum(keep)), n_cells = rep(30L, sum(keep)))
+    se <- SummarizedExperiment::SummarizedExperiment(
+        assays = list(counts = values), colData = col_data)
+    preparePseudobulk(se, "sample_id", "donor_id", "condition",
+        "cell_type", sample_table = sample_table, n_cells = "n_cells")
+}
+
+test_that("independent workflow returns comparable donor refits", {
+    pb <- make_fixture()
+    contrast <- c(numerator = "stim", denominator = "ctrl")
+    audit <- auditDesign(pb, "independent", contrast)
+    expect_true(all(as.data.frame(audit[["runs"]])$reason_code == "OK"))
+    result <- assessDonorInfluence(pb, "independent", contrast)
+    fits <- as.data.frame(result[["fits"]])
+    expect_equal(nrow(fits), 9L)
+    expect_true(all(fits$execution_status == "completed"))
+    observed <- result[["results"]][["T"]]
+    expect_equal(ncol(observed), 9L)
+    expect_equal(nrow(observed), 250L)
+    p <- SummarizedExperiment::assay(observed, "p_value")[, 1L]
+    padj <- SummarizedExperiment::assay(observed,
+        "padj_within_cell_type")[, 1L]
+    expect_equal(padj, stats::p.adjust(p, "BH", n = nrow(observed)))
+    summary <- summarizeInfluence(result, effect_threshold = 0.5)
+    expect_equal(nrow(summary), nrow(observed))
+    expect_true(all(summary$n_planned == 8L))
+    expect_true(all(summary$n_effect_valid == 8L))
+})
+
+test_that("pair policy records a blocked and a reduced cohort", {
+    pb <- make_fixture(paired = TRUE, missing_pair = TRUE)
+    contrast <- c(numerator = "stim", denominator = "ctrl")
+    strict <- assessDonorInfluence(pb, "paired", contrast)
+    expect_identical(as.data.frame(strict[["spec"]])$plan_status,
+                     "not_created")
+    expect_equal(nrow(strict[["results"]][["T"]]), 0L)
+    expect_equal(ncol(strict[["results"]][["T"]]), 1L)
+    expect_identical(as.data.frame(strict[["fits"]])$reason_code,
+                     "INCOMPLETE_PAIR")
+    reduced <- assessDonorInfluence(pb, "paired", contrast,
+                                    pair_policy = "complete_pairs")
+    fits <- as.data.frame(reduced[["fits"]])
+    expect_equal(nrow(fits), 4L)
+    expect_true(all(fits$execution_status == "completed"))
+    membership <- as.data.frame(reduced[["sample_membership"]])
+    expect_true(any(membership$reason_code == "PAIR_MEMBER_EXCLUDED"))
+    expect_true(any(membership$reason_code == "MISSING_CELL_TYPE"))
+})
+
+test_that("invalid raw counts are rejected", {
+    pb <- make_fixture()
+    current <- SummarizedExperiment::assay(pb, "counts")
+    current[1L, 1L] <- 0.2
+    SummarizedExperiment::assay(pb, "counts") <- current
+    expect_error(preparePseudobulk(pb, "sample_id", "donor_id",
+        "condition", "cell_type"), "INVALID_COUNTS")
+})
+
+test_that("sparse cells aggregate without inventing missing columns", {
+    counts <- Matrix::Matrix(matrix(c(1, 0, 2, 3, 4, 0, 0, 5),
+        nrow = 2, dimnames = list(c("g1", "g2"), NULL)), sparse = TRUE)
+    cd <- S4Vectors::DataFrame(sample_id = c("s1", "s1", "s2", "s2"),
+        donor_id = c("d1", "d1", "d2", "d2"),
+        condition = c("ctrl", "ctrl", "stim", "stim"),
+        cell_type = c("T", "T", "T", "B"))
+    sce <- SingleCellExperiment::SingleCellExperiment(
+        assays = list(counts = counts), colData = cd)
+    pb <- preparePseudobulk(sce, "sample_id", "donor_id", "condition",
+                            "cell_type")
+    expect_equal(ncol(pb), 3L)
+    expect_equal(as.matrix(SummarizedExperiment::assay(pb, "counts")),
+        matrix(c(3, 3, 0, 5, 4, 0), nrow = 2,
+               dimnames = list(c("g1", "g2"),
+                               paste0("pb_0000", 1:3))))
+    cover <- S4Vectors::metadata(pb)$scdonoraudit$coverage
+    expect_equal(sum(!cover$observed), 1L)
+})
+
+test_that("summary retains ties and the planned denominator", {
+    pb <- make_fixture()
+    result <- assessDonorInfluence(pb, "independent",
+        c(numerator = "stim", denominator = "ctrl"))
+    se <- result[["results"]][["T"]]
+    for (field in c("logFC", "effect_valid", "test_valid")) {
+        matrix <- SummarizedExperiment::assay(se, field)
+        matrix[1L, ] <- if (field == "logFC")
+            c(0.8, 0.9, 0.7, -0.6, rep(NA_real_, 5L)) else
+            c(TRUE, TRUE, TRUE, TRUE, rep(FALSE, 5L))
+        SummarizedExperiment::assay(se, field) <- matrix
+    }
+    result[["results"]][["T"]] <- se
+    summary <- summarizeInfluence(result, effect_threshold = 0.5)
+    first <- which(summary$gene_id == rownames(se)[1L])
+    expect_equal(summary$n_planned[first], 8L)
+    expect_equal(summary$n_effect_valid[first], 3L)
+    expect_equal(summary$max_abs_delta_observed[first], 1.4)
+    expect_equal(summary$n_material_reversal[first], 1L)
+    expect_false(summary$complete_effect_coverage[first])
+    expect_equal(length(summary$max_influence_donors[[first]]), 1L)
+})
+
+test_that("one blocked cell type does not suppress a valid cell type", {
+    pb <- make_fixture(paired = TRUE)
+    values <- SummarizedExperiment::assay(pb, "counts")
+    combined_values <- cbind(values, values[, 1:7])
+    colnames(combined_values) <- paste0("column", seq_len(ncol(combined_values)))
+    cd <- as.data.frame(SummarizedExperiment::colData(pb))
+    b_cd <- cd[1:7, , drop = FALSE]
+    b_cd$cell_type <- "B"
+    combined_cd <- rbind(cd, b_cd)
+    rownames(combined_cd) <- NULL
+    registry <- S4Vectors::metadata(pb)$scdonoraudit$sample_table
+    source <- SummarizedExperiment::SummarizedExperiment(
+        assays = list(counts = combined_values),
+        colData = S4Vectors::DataFrame(combined_cd))
+    prepared <- preparePseudobulk(source, "sample_id", "donor_id",
+        "condition", "cell_type", sample_table = registry,
+        n_cells = "n_cells")
+    result <- assessDonorInfluence(prepared, "paired",
+        c(numerator = "stim", denominator = "ctrl"))
+    fits <- as.data.frame(result[["fits"]])
+    expect_equal(nrow(fits[fits$cell_type == "B", ]), 1L)
+    expect_equal(nrow(fits[fits$cell_type == "T", ]), 5L)
+    expect_identical(fits$reason_code[fits$cell_type == "B"],
+                     "INCOMPLETE_PAIR")
+    expect_true(all(fits$execution_status[fits$cell_type == "T"] ==
+                    "completed"))
+})
+
+test_that("baseline and donor refit agree with a direct edgeR analysis", {
+    pb <- make_fixture()
+    result <- assessDonorInfluence(pb, "independent",
+        c(numerator = "stim", denominator = "ctrl"))
+    observed <- result[["results"]][["T"]]
+    counts <- SummarizedExperiment::assay(pb, "counts")
+    info <- as.data.frame(SummarizedExperiment::colData(pb))
+    kept <- edgeR::filterByExpr(as.matrix(counts), group = info$condition,
+        min.count = 10, min.total.count = 15, large.n = 10, min.prop = 0.7)
+    expect_identical(rownames(observed), rownames(pb)[kept])
+    for (j in c(1L, 2L)) {
+        use <- if (j == 1L) rep(TRUE, nrow(info)) else
+            info$donor_id != "d1"
+        y <- edgeR::DGEList(counts = as.matrix(counts[kept, use, drop = FALSE]))
+        y <- edgeR::normLibSizes(y, method = "TMM")
+        group <- factor(info$condition[use], levels = c("ctrl", "stim"))
+        design <- stats::model.matrix(~ group)
+        fit <- edgeR::glmQLFit(y, design = design, dispersion = NULL,
+            abundance.trend = TRUE, robust = TRUE, legacy = FALSE,
+            top.proportion = NULL, prior.count = 0.125)
+        reference <- edgeR::glmQLFTest(fit, contrast = c(0, 1))$table
+        expect_equal(as.numeric(SummarizedExperiment::assay(observed,
+            "logFC")[, j]), reference$logFC, tolerance = 1e-8)
+        expect_equal(as.numeric(SummarizedExperiment::assay(observed,
+            "p_value")[, j]), reference$PValue, tolerance = 1e-8)
+    }
+})
+
+test_that("all-zero-after-deletion keeps a gene row with missing values", {
+    pb <- make_fixture()
+    counts <- SummarizedExperiment::assay(pb, "counts")
+    counts[1L, ] <- 0
+    counts[1L, 1L] <- 1000
+    SummarizedExperiment::assay(pb, "counts") <- counts
+    result <- assessDonorInfluence(pb, "independent",
+        c(numerator = "stim", denominator = "ctrl"),
+        filter_args = list(min.count = 0, min.total.count = 1))
+    se <- result[["results"]][["T"]]
+    expect_true(rownames(pb)[1L] %in% rownames(se))
+    donor <- as.character(SummarizedExperiment::colData(se)$omitted_donor)
+    column <- which(donor == "d1")
+    gene <- match(rownames(pb)[1L], rownames(se))
+    expect_equal(SummarizedExperiment::assay(se,
+        "gene_status_code")[gene, column], 1L)
+    expect_false(SummarizedExperiment::assay(se,
+        "effect_valid")[gene, column])
+    expect_true(is.na(SummarizedExperiment::assay(se,
+        "logFC")[gene, column]))
+})
+
+test_that("paired refit after removing the reference donor matches edgeR", {
+    pb <- make_fixture(paired = TRUE)
+    result <- assessDonorInfluence(pb, "paired",
+        c(numerator = "stim", denominator = "ctrl"))
+    observed <- result[["results"]][["T"]]
+    counts <- SummarizedExperiment::assay(pb, "counts")
+    info <- as.data.frame(SummarizedExperiment::colData(pb))
+    kept <- edgeR::filterByExpr(as.matrix(counts), group = info$condition,
+        min.count = 10, min.total.count = 15, large.n = 10, min.prop = 0.7)
+    for (j in c(1L, 2L)) {
+        use <- if (j == 1L) rep(TRUE, nrow(info)) else
+            info$donor_id != "d1"
+        donor_id <- factor(info$donor_id[use])
+        condition <- factor(info$condition[use],
+                            levels = c("ctrl", "stim"))
+        design <- stats::model.matrix(~ donor_id + condition)
+        y <- edgeR::DGEList(counts = as.matrix(counts[kept, use, drop = FALSE]))
+        y <- edgeR::normLibSizes(y, method = "TMM")
+        fit <- edgeR::glmQLFit(y, design = design, dispersion = NULL,
+            abundance.trend = TRUE, robust = TRUE, legacy = FALSE,
+            top.proportion = NULL, prior.count = 0.125)
+        contrast <- as.numeric(colnames(design) == "conditionstim")
+        reference <- edgeR::glmQLFTest(fit, contrast = contrast)$table
+        expect_equal(as.numeric(SummarizedExperiment::assay(observed,
+            "logFC")[, j]), reference$logFC, tolerance = 1e-8)
+        expect_equal(as.numeric(SummarizedExperiment::assay(observed,
+            "p_value")[, j]), reference$PValue, tolerance = 1e-8)
+    }
+})
+
+test_that("rank deficient nuisance term is reported without dropping it", {
+    pb <- make_fixture()
+    cd <- SummarizedExperiment::colData(pb)
+    cd$constant <- rep(1, ncol(pb))
+    SummarizedExperiment::colData(pb) <- cd
+    registry <- S4Vectors::metadata(pb)$scdonoraudit$sample_table
+    registry$constant <- 1
+    source <- SummarizedExperiment::SummarizedExperiment(
+        assays = list(counts = SummarizedExperiment::assay(pb, "counts")),
+        colData = cd)
+    prepared <- preparePseudobulk(source, "sample_id", "donor_id",
+        "condition", "cell_type", sample_vars = "constant",
+        sample_table = registry, n_cells = "n_cells")
+    audit <- auditDesign(prepared, "independent",
+        c(numerator = "stim", denominator = "ctrl"),
+        covariates = "constant")
+    runs <- as.data.frame(audit[["runs"]])
+    expect_true(all(runs$reason_code == "DESIGN_RANK_DEFICIENT"))
+    expect_true(all(runs$target_estimable))
+    result <- assessDonorInfluence(prepared, "independent",
+        c(numerator = "stim", denominator = "ctrl"),
+        covariates = "constant")
+    expect_true(all(as.data.frame(result[["fits"]])$execution_status ==
+                    "skipped"))
+})
+
+test_that("numeric covariates are finite and thresholds cannot be infinite", {
+    pb <- make_fixture()
+    contrast <- c(numerator = "stim", denominator = "ctrl")
+    registry <- S4Vectors::metadata(pb)$scdonoraudit$sample_table
+    registry$age <- seq_len(nrow(registry)) + 30
+    source <- SummarizedExperiment::SummarizedExperiment(
+        assays = list(counts = SummarizedExperiment::assay(pb, "counts")),
+        colData = SummarizedExperiment::colData(pb))
+    prepared <- preparePseudobulk(source, "sample_id", "donor_id",
+        "condition", "cell_type", sample_vars = "age",
+        sample_table = registry, n_cells = "n_cells")
+    expect_true(all(as.data.frame(auditDesign(prepared, "independent",
+        contrast, covariates = "age")[["runs"]])$reason_code == "OK"))
+    registry$age[1L] <- Inf
+    invalid <- preparePseudobulk(source, "sample_id", "donor_id",
+        "condition", "cell_type", sample_vars = "age",
+        sample_table = registry, n_cells = "n_cells")
+    expect_error(auditDesign(invalid, "independent", contrast,
+        covariates = "age"), "INVALID_COVARIATE")
+    expect_error(auditDesign(pb, "independent", contrast,
+        min_cells = Inf), "INVALID_ARGUMENT")
+    expect_error(auditDesign(pb, "independent", contrast,
+        min_replicates_warn = Inf), "INVALID_ARGUMENT")
+})
+
+test_that("one-condition-zero genes retain an explicit diagnostic code", {
+    pb <- make_fixture()
+    counts <- SummarizedExperiment::assay(pb, "counts")
+    condition <- as.character(SummarizedExperiment::colData(pb)$condition)
+    counts[1L, condition == "ctrl"] <- 100L
+    counts[1L, condition == "stim"] <- 0L
+    SummarizedExperiment::assay(pb, "counts") <- counts
+    result <- assessDonorInfluence(pb, "independent",
+        c(numerator = "stim", denominator = "ctrl"))
+    observed <- result[["results"]][["T"]]
+    expect_true(all(SummarizedExperiment::assay(observed,
+        "gene_status_code")["g1", ] == 4L))
+    expect_true(all(SummarizedExperiment::assay(observed,
+        "effect_valid")["g1", ]))
+})
+
+test_that("unavailable baseline retains planned deletions and missing effects", {
+    pb <- make_fixture()
+    counts <- SummarizedExperiment::assay(pb, "counts")
+    counts[,] <- 0
+    counts[1L, ] <- 1
+    SummarizedExperiment::assay(pb, "counts") <- counts
+    result <- assessDonorInfluence(pb, "independent",
+        c(numerator = "stim", denominator = "ctrl"))
+    fits <- as.data.frame(result[["fits"]])
+    expect_identical(fits$reason_code[1L], "NO_GENES_AFTER_FILTER")
+    expect_true(all(fits$reason_code[-1L] == "BASELINE_UNAVAILABLE"))
+    expect_equal(ncol(result[["results"]][["T"]]), 9L)
+    expect_equal(nrow(result[["results"]][["T"]]), 0L)
+    expect_equal(as.data.frame(result[["spec"]])$n_planned, 8L)
+})
+
+test_that("partial missing p values retain the fixed BH family", {
+    adjusted <- scDonorAudit:::.scd_adjust_p(
+        c(0.01, 0.04, NA_real_), c(TRUE, TRUE, TRUE))
+    expect_identical(adjusted$test_valid, c(TRUE, TRUE, FALSE))
+    expect_equal(adjusted$adjusted, c(0.03, 0.06, NA_real_))
+    no_effect <- scDonorAudit:::.scd_adjust_p(c(0.01, 0.04, 0.5),
+                                              c(FALSE, TRUE, TRUE))
+    expect_false(no_effect$test_valid[1L])
+    expect_true(is.na(no_effect$adjusted[1L]))
+})
+
+test_that("input order is canonical and contrast reversal changes effect sign", {
+    pb <- make_fixture()
+    contrast <- c(numerator = "stim", denominator = "ctrl")
+    original <- assessDonorInfluence(pb, "independent", contrast)
+    set.seed(809)
+    shuffled <- pb[sample(seq_len(nrow(pb))), sample(seq_len(ncol(pb)))]
+    registry <- S4Vectors::metadata(pb)$scdonoraudit$sample_table
+    reordered <- preparePseudobulk(shuffled, "sample_id", "donor_id",
+        "condition", "cell_type", sample_table = registry,
+        n_cells = "n_cells")
+    expect_equal(SummarizedExperiment::assay(reordered, "counts"),
+                 SummarizedExperiment::assay(pb, "counts"))
+    replay <- assessDonorInfluence(reordered, "independent", contrast)
+    expect_equal(SummarizedExperiment::assay(
+        original[["results"]][["T"]], "logFC"),
+        SummarizedExperiment::assay(replay[["results"]][["T"]], "logFC"))
+    reversed <- assessDonorInfluence(pb, "independent",
+        c(numerator = "ctrl", denominator = "stim"))
+    expect_equal(SummarizedExperiment::assay(
+        original[["results"]][["T"]], "logFC"),
+        -SummarizedExperiment::assay(reversed[["results"]][["T"]], "logFC"),
+        tolerance = 1e-8)
+    expect_equal(SummarizedExperiment::assay(
+        original[["results"]][["T"]], "p_value"),
+        SummarizedExperiment::assay(reversed[["results"]][["T"]], "p_value"),
+        tolerance = 1e-8)
+})
+
+test_that("serialized results preserve state and plots build", {
+    pb <- make_fixture()
+    result <- assessDonorInfluence(pb, "independent",
+        c(numerator = "stim", denominator = "ctrl"))
+    file <- tempfile(fileext = ".rds")
+    saveRDS(result, file)
+    loaded <- readRDS(file)
+    expect_identical(as.data.frame(result[["fits"]]),
+                     as.data.frame(loaded[["fits"]]))
+    expect_equal(SummarizedExperiment::assay(
+        result[["results"]][["T"]], "logFC"),
+        SummarizedExperiment::assay(
+            loaded[["results"]][["T"]], "logFC"))
+    for (type in c("coverage", "influence", "effect")) {
+        plot <- if (type == "coverage") plotInfluence(loaded, type) else
+            plotInfluence(loaded, type, cell_type = "T", gene_id = "g1")
+        expect_s3_class(plot, "ggplot")
+        expect_silent(ggplot2::ggplot_build(plot))
+    }
+})
+
+test_that("one backend failure does not erase later donor runs", {
+    pb <- make_fixture()
+    original_fit <- scDonorAudit:::.scd_fit_run
+    calls <- 0L
+    testthat::local_mocked_bindings(
+        .scd_fit_run = function(...) {
+            calls <<- calls + 1L
+            if (calls == 2L) stop("injected failure")
+            original_fit(...)
+        }, .package = "scDonorAudit")
+    result <- assessDonorInfluence(pb, "independent",
+        c(numerator = "stim", denominator = "ctrl"))
+    fits <- as.data.frame(result[["fits"]])
+    expect_identical(fits$execution_status[1:3],
+                     c("completed", "failed", "completed"))
+    expect_identical(fits$reason_code[2L], "BACKEND_ERROR")
+    expect_equal(nrow(fits), 9L)
+    observed <- result[["results"]][["T"]]
+    expect_true(all(!SummarizedExperiment::assay(observed,
+        "effect_valid")[, 2L]))
+    expect_true(all(SummarizedExperiment::assay(observed,
+        "effect_valid")[, 3L]))
+    summary <- summarizeInfluence(result)
+    expect_true(all(summary$n_planned == 8L))
+    expect_true(all(summary$n_effect_valid == 7L))
+    expect_false(any(summary$complete_effect_coverage))
+    issues <- as.data.frame(result[["issues"]])
+    expect_true(any(grepl("injected failure", issues$message,
+                          fixed = TRUE)))
+})
+
+test_that("backend warnings are recorded while the fit completes", {
+    pb <- make_fixture()
+    original_fit <- scDonorAudit:::.scd_fit_run
+    calls <- 0L
+    testthat::local_mocked_bindings(
+        .scd_fit_run = function(...) {
+            calls <<- calls + 1L
+            if (calls == 2L) warning("injected backend warning")
+            original_fit(...)
+        }, .package = "scDonorAudit")
+    result <- assessDonorInfluence(pb, "independent",
+        c(numerator = "stim", denominator = "ctrl"))
+    fits <- as.data.frame(result[["fits"]])
+    issues <- as.data.frame(result[["issues"]])
+    expect_true(all(fits$execution_status == "completed"))
+    expect_true(any(issues$reason_code == "BACKEND_WARNING" &
+        grepl("injected backend warning", issues$message, fixed = TRUE)))
+})
+
+test_that("cell-level and preaggregated inputs agree on the same counts", {
+    baseline <- make_fixture()
+    sample_counts <- SummarizedExperiment::assay(baseline, "counts")
+    registry <- S4Vectors::metadata(baseline)$scdonoraudit$sample_table
+    set.seed(71)
+    first <- matrix(stats::rbinom(length(sample_counts),
+        size = as.vector(sample_counts), prob = 0.5),
+        nrow = nrow(sample_counts))
+    second <- sample_counts - first
+    cell_counts <- cbind(first, second)
+    rownames(cell_counts) <- rownames(sample_counts)
+    colnames(cell_counts) <- paste0("cell", seq_len(ncol(cell_counts)))
+    cd <- as.data.frame(SummarizedExperiment::colData(baseline))
+    cells_cd <- rbind(cd, cd)
+    rownames(cells_cd) <- NULL
+    sce <- SingleCellExperiment::SingleCellExperiment(
+        assays = list(counts = Matrix::Matrix(cell_counts, sparse = TRUE)),
+        colData = S4Vectors::DataFrame(cells_cd))
+    from_cells <- preparePseudobulk(sce, "sample_id", "donor_id",
+        "condition", "cell_type", sample_table = registry)
+    source <- SummarizedExperiment::SummarizedExperiment(
+        assays = list(counts = sample_counts),
+        colData = SummarizedExperiment::colData(baseline))
+    SummarizedExperiment::colData(source)$n_cells <- 2L
+    from_bulk <- preparePseudobulk(source, "sample_id", "donor_id",
+        "condition", "cell_type", sample_table = registry,
+        n_cells = "n_cells")
+    expect_equal(as.matrix(SummarizedExperiment::assay(from_cells, "counts")),
+                 SummarizedExperiment::assay(from_bulk, "counts"))
+    expect_equal(as.data.frame(SummarizedExperiment::colData(from_cells)),
+                 as.data.frame(SummarizedExperiment::colData(from_bulk)))
+    contrast <- c(numerator = "stim", denominator = "ctrl")
+    cell_result <- assessDonorInfluence(from_cells, "independent", contrast)
+    bulk_result <- assessDonorInfluence(from_bulk, "independent", contrast)
+    expect_equal(SummarizedExperiment::assay(cell_result[["results"]][["T"]],
+        "logFC"), SummarizedExperiment::assay(bulk_result[["results"]][["T"]],
+        "logFC"))
+})
+
+test_that("registry conflicts and repeated biological samples are rejected", {
+    pb <- make_fixture()
+    registry <- S4Vectors::metadata(pb)$scdonoraudit$sample_table
+    source <- SummarizedExperiment::SummarizedExperiment(
+        assays = list(counts = SummarizedExperiment::assay(pb, "counts")),
+        colData = SummarizedExperiment::colData(pb))
+    bad_registry <- registry
+    bad_registry$donor_id[1L] <- "wrong_donor"
+    expect_error(preparePseudobulk(source, "sample_id", "donor_id",
+        "condition", "cell_type", sample_table = bad_registry,
+        n_cells = "n_cells"), "METADATA_CONFLICT")
+    repeated <- registry
+    repeated$donor_id[2L] <- repeated$donor_id[1L]
+    repeated$condition[2L] <- repeated$condition[1L]
+    SummarizedExperiment::colData(source)$donor_id[2L] <-
+        repeated$donor_id[2L]
+    SummarizedExperiment::colData(source)$condition[2L] <-
+        repeated$condition[2L]
+    expect_error(preparePseudobulk(source, "sample_id", "donor_id",
+        "condition", "cell_type", sample_table = repeated,
+        n_cells = "n_cells"), "UNSUPPORTED_REPEATED_MEASURES")
+})

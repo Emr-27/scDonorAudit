@@ -1,0 +1,126 @@
+---
+title: "Auditing donor influence in pseudobulk analysis"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Auditing donor influence in pseudobulk analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7,
+                      fig.height = 4)
+```
+
+This package asks how a **fixed two-condition pseudobulk analysis** changes
+when one biological donor is removed. A large effect change is descriptive:
+it can reflect real donor heterogeneity, limited precision, or other data
+properties. The package does not decide that a donor should be excluded.
+
+## Construct an auditable example
+
+The simulated counts below are only a workflow example, not a benchmark or
+biological result. Each column of the `SummarizedExperiment` is one observed
+sample and cell type. Donor `d4` lacks a `B`-cell pseudobulk under `stim`.
+The full sample registry makes that absence visible.
+
+```{r input}
+set.seed(1103)
+sample_table <- data.frame(
+    sample_id = paste0("s", seq_len(8)),
+    donor_id = rep(paste0("d", seq_len(4)), each = 2),
+    condition = rep(c("ctrl", "stim"), 4))
+source_rows <- rbind(
+    transform(sample_table, cell_type = "T"),
+    transform(sample_table[seq_len(7), ], cell_type = "B"))
+counts <- matrix(rnbinom(250 * nrow(source_rows), mu = 25, size = 5),
+                 nrow = 250,
+                 dimnames = list(paste0("g", seq_len(250)),
+                                 paste0("column", seq_len(nrow(source_rows)))))
+source_rows$n_cells <- 30L
+se <- SummarizedExperiment::SummarizedExperiment(
+    assays = list(counts = counts),
+    colData = S4Vectors::DataFrame(source_rows))
+pb <- scDonorAudit::preparePseudobulk(
+    se, "sample_id", "donor_id", "condition", "cell_type",
+    sample_table = sample_table, n_cells = "n_cells")
+contrast <- c(numerator = "stim", denominator = "ctrl")
+```
+
+The named contrast fixes the sign: positive log2 fold-change means higher
+expression in `stim` than `ctrl`. The count assay must contain raw,
+non-negative integer counts. The package checks numeric validity but cannot
+prove the assay was not normalized upstream.
+
+## Review the design before fitting
+
+The default paired policy is strict. An incomplete eligible pair blocks that
+cell type without affecting other cell types.
+
+```{r audit}
+audit <- scDonorAudit::auditDesign(pb, "paired", contrast)
+as.data.frame(audit[["spec"]])
+subset(as.data.frame(audit[["sample_membership"]]),
+       cell_type == "B" & reason_code != "OK")
+```
+
+`plan_status = "not_created"` means a deletion plan was never established for
+the blocked cell type. It does not mean that all donor deletions succeeded or
+that the result was stable.
+
+## Fit and inspect the ledger
+
+```{r fit}
+result <- scDonorAudit::assessDonorInfluence(pb, "paired", contrast)
+subset(as.data.frame(result[["fits"]]),
+       select = c(cell_type, run_id, omitted_donor,
+                  execution_status, reason_code))
+head(as.data.frame(scDonorAudit::summarizeInfluence(result,
+                                                     effect_threshold = 0.5))[,
+    c("cell_type", "gene_id", "n_planned", "n_effect_valid",
+      "max_abs_delta_observed")])
+```
+
+The summary's `n_planned` includes all eligible donor deletions, even failed
+refits. A maximum effect change is only the maximum among refits with valid
+effects. Missing effects are never converted into zero changes or
+non-significant tests. Adjusted p values use a fixed baseline gene family
+within each cell type; they do not control error across cell types or deletion
+runs.
+
+To analyze the `B`-cell data from complete pairs, request the alternative
+policy explicitly. This changes the analysis cohort, so report the excluded
+pair when presenting the result.
+
+```{r complete-pairs}
+reduced <- scDonorAudit::assessDonorInfluence(
+    pb, "paired", contrast, pair_policy = "complete_pairs")
+subset(as.data.frame(reduced[["spec"]]),
+       select = c(cell_type, plan_status, n_planned, n_samples))
+```
+
+## Inspect figures
+
+The coverage plot shows included and excluded sample/cell-type combinations.
+Gene plots require explicit, stable gene IDs; they do not choose genes by
+apparent influence.
+
+```{r coverage-plot}
+scDonorAudit::plotInfluence(result, "coverage")
+```
+
+```{r gene-plots}
+scDonorAudit::plotInfluence(result, "influence", cell_type = "T",
+                            gene_id = c("g1", "g2", "g3"))
+scDonorAudit::plotInfluence(result, "effect", cell_type = "T", gene_id = "g1")
+```
+
+Before interpreting a gene, inspect `result[["fits"]]`,
+`result[["sample_membership"]]`, and the number of valid deletion runs.
+A failed fit or unestimable contrast limits the observed sensitivity analysis.
+
+## Session information
+
+```{r session-info}
+sessionInfo()
+```

@@ -1,0 +1,37 @@
+Package: scDonorAudit
+Title: Audit Donor Influence in Single-Cell Pseudobulk Analyses
+Version: 0.0.1
+Authors@R: person(given = "Fuhao", family = "Jiang", role = c("aut", "cre"), email = "emr39515@gmail.com")
+Author: Fuhao Jiang [aut, cre]
+Maintainer: Fuhao Jiang <emr39515@gmail.com>
+Description: Audits sample and donor design for two-condition single-cell
+    pseudobulk differential expression analyses. Fits an edgeR quasi-likelihood
+    model to each cell type and repeats the analysis after omitting each donor.
+    Reports effect changes, unavailable results, and the reasons analyses could
+    not run. The diagnostic results are descriptive and do not classify donors
+    or genes as valid or invalid.
+License: Artistic-2.0
+URL: https://github.com/Emr-27/scDonorAudit
+BugReports: https://github.com/Emr-27/scDonorAudit/issues
+Encoding: UTF-8
+LazyData: false
+Roxygen: list(markdown = TRUE)
+biocViews: SingleCell, RNASeq, DifferentialExpression, QualityControl, Software
+Imports:
+    edgeR,
+    ggplot2,
+    IRanges,
+    Matrix,
+    methods,
+    rlang,
+    S4Vectors,
+    SingleCellExperiment,
+    stats,
+    SummarizedExperiment
+Suggests:
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0)
+VignetteBuilder: knitr
+Config/testthat/edition: 3
+Config/roxygen2/version: 8.1.0
