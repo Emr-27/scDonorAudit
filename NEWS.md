@@ -1,4 +1,4 @@
-# scDonorAudit 0.0.1
+# scDonorAudit 0.99.0
 
 - Added donor-aware pseudobulk preparation, design audits, leave-one-donor-out
   edgeR quasi-likelihood fits, summaries, and plots for two-condition studies.
