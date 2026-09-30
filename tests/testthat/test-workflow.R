@@ -481,6 +481,130 @@ test_that("input order is canonical and contrast reversal changes effect sign", 
         tolerance = 1e-8)
 })
 
+test_that("named contrast has a fixed meaning under user factor settings", {
+    old <- options("contrasts")
+    on.exit(options(old), add = TRUE)
+    for (paired in c(FALSE, TRUE)) {
+        data <- data.frame(
+            donor_id = if (paired) rep(paste0("d", 1:4), each = 2) else
+                paste0("d", 1:8),
+            condition = if (paired) rep(c("ctrl", "stim"), 4) else
+                rep(c("ctrl", "stim"), each = 4),
+            batch = if (paired) c("A", "A", "A", "B", "B", "A", "B", "B")
+                else rep(c("A", "B"), 4))
+        spec <- scDonorAudit:::.scd_covariate_spec(data, "batch")
+        config <- list(design = if (paired) "paired" else "independent",
+            contrast = c(numerator = "stim", denominator = "ctrl"),
+            covariates = "batch")
+        response <- 2 * (data$condition == "stim") +
+            3 * (data$batch == "B") +
+            if (paired) rep(seq_len(4), each = 2) else 0
+        designs <- lapply(c("contr.treatment", "contr.sum"), function(code) {
+            options(contrasts = c(code, "contr.poly"))
+            before <- getOption("contrasts")
+            design <- scDonorAudit:::.scd_make_design(data, config, spec)
+            expect_identical(getOption("contrasts"), before)
+            design
+        })
+        expect_identical(designs[[1L]]$status, "OK")
+        expect_equal(designs[[1L]]$matrix, designs[[2L]]$matrix)
+        for (design in designs) {
+            coefficients <- stats::lm.fit(design$matrix, response)$coefficients
+            expect_equal(sum(design$contrast * coefficients), 2,
+                         tolerance = 1e-10)
+        }
+        config$contrast <- c(numerator = "ctrl", denominator = "stim")
+        reversed <- scDonorAudit:::.scd_make_design(data, config, spec)
+        coefficients <- stats::lm.fit(reversed$matrix, response)$coefficients
+        expect_equal(sum(reversed$contrast * coefficients), -2,
+                     tolerance = 1e-10)
+    }
+})
+
+test_that("baseline and donor deletions ignore global contrast options", {
+    old <- options("contrasts")
+    on.exit(options(old), add = TRUE)
+    contrast <- c(numerator = "stim", denominator = "ctrl")
+    for (paired in c(FALSE, TRUE)) {
+        pb <- make_fixture(paired = paired)
+        covariates <- character()
+        if (!paired) {
+            registry <- S4Vectors::metadata(pb)$scdonoraudit$sample_table
+            registry$batch <- rep(c("A", "B"), 4)
+            cd <- SummarizedExperiment::colData(pb)
+            cd$batch <- registry$batch
+            source <- SummarizedExperiment::SummarizedExperiment(
+                assays = list(counts = SummarizedExperiment::assay(pb,
+                    "counts")), colData = cd)
+            pb <- preparePseudobulk(source, "sample_id", "donor_id",
+                "condition", "cell_type", sample_vars = "batch",
+                sample_table = registry, n_cells = "n_cells")
+            covariates <- "batch"
+        }
+        design <- if (paired) "paired" else "independent"
+        options(contrasts = c("contr.treatment", "contr.poly"))
+        reference <- assessDonorInfluence(pb, design, contrast,
+                                          covariates = covariates)
+        options(contrasts = c("contr.sum", "contr.poly"))
+        before <- getOption("contrasts")
+        changed <- assessDonorInfluence(pb, design, contrast,
+                                        covariates = covariates)
+        expect_identical(getOption("contrasts"), before)
+        for (field in c("logFC", "p_value")) {
+            expect_equal(SummarizedExperiment::assay(
+                reference[["results"]][["T"]], field),
+                SummarizedExperiment::assay(
+                    changed[["results"]][["T"]], field),
+                tolerance = 1e-8)
+        }
+        expect_identical(as.data.frame(reference[["fits"]])$design_columns,
+                         as.data.frame(changed[["fits"]])$design_columns)
+        reversed <- assessDonorInfluence(pb, design,
+            c(numerator = "ctrl", denominator = "stim"),
+            covariates = covariates)
+        expect_equal(SummarizedExperiment::assay(
+            changed[["results"]][["T"]], "logFC"),
+            -SummarizedExperiment::assay(
+                reversed[["results"]][["T"]], "logFC"),
+            tolerance = 1e-8)
+    }
+})
+
+test_that("a planted one-donor shift is traceable through the fit ledger", {
+    set.seed(672)
+    donor <- rep(paste0("d", 1:4), each = 2)
+    condition <- rep(c("ctrl", "stim"), 4)
+    sample <- paste0("s", seq_along(donor))
+    counts <- matrix(stats::rnbinom(250 * 8, mu = 25, size = 5),
+        nrow = 250, dimnames = list(paste0("g", 1:250), sample))
+    counts["g1", "s8"] <- counts["g1", "s8"] * 20
+    registry <- data.frame(sample_id = sample, donor_id = donor,
+                           condition = condition)
+    source <- SummarizedExperiment::SummarizedExperiment(
+        assays = list(counts = counts),
+        colData = S4Vectors::DataFrame(registry, cell_type = "T",
+                                        n_cells = 30L))
+    pb <- preparePseudobulk(source, "sample_id", "donor_id", "condition",
+        "cell_type", sample_table = registry, n_cells = "n_cells")
+    result <- assessDonorInfluence(pb, "paired",
+        c(numerator = "stim", denominator = "ctrl"))
+    fits <- as.data.frame(result[["fits"]])
+    expect_true(all(fits$execution_status == "completed"))
+    expect_equal(nrow(fits), 5L)
+    summary <- summarizeInfluence(result)
+    row <- which(summary$gene_id == "g1")
+    expect_length(row, 1L)
+    expect_equal(summary$n_planned[row], 4L)
+    expect_equal(summary$n_effect_valid[row], 4L)
+    expect_identical(as.character(summary$max_influence_donors[[row]]),
+                     "d4")
+    effects <- SummarizedExperiment::assay(
+        result[["results"]][["T"]], "logFC")["g1", ]
+    expect_equal(summary$max_abs_delta_observed[row],
+                 abs(effects["omit_004"] - effects["baseline"]),
+                 tolerance = 1e-8, ignore_attr = TRUE)
+})
+
 test_that("serialized results preserve state and plots build", {
     pb <- make_fixture()
     result <- assessDonorInfluence(pb, "independent",

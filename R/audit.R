@@ -77,8 +77,14 @@
     predictors <- c(if (options$design == "paired") "donor_id",
                     "condition", options$covariates)
     formula <- stats::reformulate(predictors)
-    matrix <- tryCatch(stats::model.matrix(formula, data = input),
-                       error = function(e) NULL)
+    matrix <- tryCatch({
+        factor_terms <- predictors[vapply(input[predictors], is.factor,
+                                           logical(1))]
+        coding <- lapply(factor_terms, function(field)
+            stats::contr.treatment(levels(input[[field]]), base = 1L))
+        names(coding) <- factor_terms
+        stats::model.matrix(formula, data = input, contrasts.arg = coding)
+    }, error = function(e) NULL)
     if (is.null(matrix)) {
         return(list(status = "DESIGN_MATRIX_ERROR", matrix = NULL,
                     contrast = NULL, rank = NA_integer_, residual_df = NA_integer_,

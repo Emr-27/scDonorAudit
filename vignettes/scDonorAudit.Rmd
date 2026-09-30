@@ -89,7 +89,9 @@ contrast <- c(numerator = "stim", denominator = "ctrl")
 The named contrast fixes the sign: positive log2 fold-change means higher
 expression in `stim` than `ctrl`. The count assay must contain raw,
 non-negative integer counts. The package checks numeric validity but cannot
-prove the assay was not normalized upstream.
+prove the assay was not normalized upstream. Factor coding is fixed inside
+the design, so a user's global `options("contrasts")` does not change the
+named effect's direction or scale.
 
 ## Review the design before fitting
 
@@ -201,6 +203,63 @@ limited replication, especially after one is omitted. A large observed effect
 change can reflect biological heterogeneity or imprecision; it does not label
 a mouse for exclusion. The p values are those of the specified edgeR model,
 not a test that a donor is aberrant.
+
+## Read the donor-deletion results
+
+The fit ledger above has one full-data fit and eight donor-deletion fits. To
+illustrate what the summary adds, consider genes with valid effects in all
+eight deletions and an absolute full-data log2 fold-change of at least 1.
+Order these genes by their largest observed absolute change, breaking ties by
+gene ID, and show the genes at the 10th and 90th percentile ranks. This rule
+selects examples with different sensitivity; it is not a performance test or
+a biological gene-selection procedure.
+
+```{r real-interpretation-selection}
+real_summary <- as.data.frame(scDonorAudit::summarizeInfluence(real_result))
+candidates <- real_summary[
+    real_summary$complete_effect_coverage &
+    is.finite(real_summary$baseline_logFC) &
+    abs(real_summary$baseline_logFC) >= 1 &
+    is.finite(real_summary$max_abs_delta_observed), ]
+candidates <- candidates[order(candidates$max_abs_delta_observed,
+                               candidates$gene_id), ]
+chosen <- candidates[c(ceiling(0.1 * nrow(candidates)),
+                       ceiling(0.9 * nrow(candidates))), ]
+chosen$illustration <- c("lower change", "higher change")
+knitr::kable(chosen[, c("illustration", "gene_id", "baseline_logFC",
+    "n_planned", "n_effect_valid", "max_abs_delta_observed")], digits = 3)
+```
+
+For the higher-change example, inspect every deletion instead of relying on
+one maximum. A missing or failed deletion would appear in the fit ledger and
+reduce `n_effect_valid`; it must not be interpreted as zero change.
+
+```{r real-interpretation-refits}
+real_se <- real_result[["results"]][[chosen$cell_type[2L]]]
+gene_row <- match(chosen$gene_id[2L], rownames(real_se))
+refits <- as.data.frame(SummarizedExperiment::colData(real_se))
+refits$logFC <- as.numeric(SummarizedExperiment::assay(real_se,
+    "logFC")[gene_row, ])
+refits$change_from_full <- refits$logFC - refits$logFC[1L]
+largest <- which.max(abs(refits$change_from_full[-1L])) + 1L
+knitr::kable(refits[, c("run_id", "omitted_donor", "logFC",
+                         "change_from_full")], digits = 3)
+```
+
+In this dataset, `r nrow(candidates)` genes meet the stated selection rule.
+For `r chosen$gene_id[2L]`, the full-data LPS-versus-Vehicle log2 fold-change
+is `r sprintf("%.3f", chosen$baseline_logFC[2L])`; omitting
+`r refits$omitted_donor[largest]` changes it by
+`r sprintf("%.3f", refits$change_from_full[largest])` to
+`r sprintf("%.3f", refits$logFC[largest])`. All
+`r chosen$n_effect_valid[2L]` planned deletion effects are valid here, and
+the direction remains negative. By comparison, the lower-change example
+`r chosen$gene_id[1L]` has a maximum absolute change of
+`r sprintf("%.3f", chosen$max_abs_delta_observed[1L])`. These observations
+describe how sensitive the specified model is to donor omission in this
+dataset. They do not show that any mouse is erroneous, that a gene is robust
+in another dataset, or that the selected genes are representative of all
+genes.
 
 ## Session information
 
