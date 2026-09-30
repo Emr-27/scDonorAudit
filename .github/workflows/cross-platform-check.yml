@@ -48,3 +48,11 @@ jobs:
             package/check.log
             package/scDonorAudit.Rcheck/00check.log
             package/scDonorAudit.Rcheck/tests/testthat.Rout
+
+  bioc-devel:
+    name: Bioconductor devel / Linux
+    uses: bioconductor/workflows/.github/workflows/bioccheck.yml@main
+    with:
+      bioc_version: devel
+      error_on: warning
+      enable_pkgdown: false
