@@ -1,0 +1,50 @@
+name: Cross-platform package check
+
+"on":
+  push:
+    branches: [ci-validation]
+
+permissions:
+  contents: read
+
+jobs:
+  package-check:
+    name: ${{ matrix.os }} / R release
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: package
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          working-directory: package
+          extra-packages: any::rcmdcheck
+          needs: check
+      - name: Build and check the default branch
+        working-directory: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          R CMD build . 2>&1 | tee build.log
+          R CMD check --no-manual scDonorAudit_*.tar.gz 2>&1 | tee check.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: check-${{ matrix.os }}
+          if-no-files-found: ignore
+          path: |
+            package/build.log
+            package/check.log
+            package/scDonorAudit.Rcheck/00check.log
+            package/scDonorAudit.Rcheck/tests/testthat.Rout
