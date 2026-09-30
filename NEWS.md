@@ -1,3 +1,11 @@
+# scDonorAudit 0.99.2
+
+- Added the maintainer ORCID and aligned the minimum `testthat` version with
+  the stable mocking interface used by the tests.
+- Excluded `data-raw` from source builds while retaining its tracked files.
+- Added a clear vignette error when the Crowell19 selection rule yields fewer
+  than two genes, and removed an unsupported fixed effect-direction claim.
+
 # scDonorAudit 0.99.1
 
 - Preserved backend warnings when the same donor refit later fails, and kept

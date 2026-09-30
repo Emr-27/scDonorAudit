@@ -274,6 +274,11 @@ candidates <- real_summary[
     is.finite(real_summary$max_abs_delta_observed), ]
 candidates <- candidates[order(candidates$max_abs_delta_observed,
                                candidates$gene_id), ]
+if (nrow(candidates) < 2L) {
+    stop("The Crowell19 example requires at least two genes to illustrate ",
+         "different levels of donor-deletion sensitivity; the stated ",
+         "selection rule returned ", nrow(candidates), ".")
+}
 chosen <- candidates[c(ceiling(0.1 * nrow(candidates)),
                        ceiling(0.9 * nrow(candidates))), ]
 chosen$illustration <- c("lower change", "higher change")
@@ -302,9 +307,10 @@ For `r chosen$gene_id[2L]`, the full-data LPS-versus-Vehicle log2 fold-change
 is `r sprintf("%.3f", chosen$baseline_logFC[2L])`; omitting
 `r refits$omitted_donor[largest]` changes it by
 `r sprintf("%.3f", refits$change_from_full[largest])` to
-`r sprintf("%.3f", refits$logFC[largest])`. All
-`r chosen$n_effect_valid[2L]` planned deletion effects are valid here, and
-the direction remains negative. By comparison, the lower-change example
+`r sprintf("%.3f", refits$logFC[largest])`. Of the
+`r chosen$n_planned[2L]` planned deletion effects,
+`r chosen$n_effect_valid[2L]` are valid here. By comparison, the
+lower-change example
 `r chosen$gene_id[1L]` has a maximum absolute change of
 `r sprintf("%.3f", chosen$max_abs_delta_observed[1L])`. These observations
 describe how sensitive the specified model is to donor omission in this

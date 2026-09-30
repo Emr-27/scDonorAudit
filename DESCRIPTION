@@ -1,7 +1,12 @@
 Package: scDonorAudit
 Title: Audit Donor Influence in Single-Cell Pseudobulk Analyses
-Version: 0.99.1
-Authors@R: person(given = "Fuhao", family = "Jiang", role = c("aut", "cre"), email = "emr39515@gmail.com")
+Version: 0.99.2
+Authors@R: person(
+    given = "Fuhao",
+    family = "Jiang",
+    role = c("aut", "cre"),
+    email = "emr39515@gmail.com",
+    comment = c(ORCID = "0009-0009-8836-8494"))
 Description: Audits sample and donor design for two-condition single-cell
     pseudobulk differential expression analyses. Fits an edgeR quasi-likelihood
     model to each cell type and repeats the analysis after omitting each donor.
@@ -30,7 +35,7 @@ Suggests:
     BiocStyle,
     knitr,
     rmarkdown,
-    testthat (>= 3.0.0)
+    testthat (>= 3.2.0)
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 Config/roxygen2/version: 8.1.0
