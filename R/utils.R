@@ -151,6 +151,14 @@
         is.null(S4Vectors::metadata(pb)$scdonoraudit)) {
         .scd_stop("INVALID_PSEUDOBULK", "use preparePseudobulk() first")
     }
+    if (!"counts" %in% SummarizedExperiment::assayNames(pb)) {
+        .scd_stop("MISSING_ASSAY", "assay 'counts' is missing")
+    }
+    if (nrow(pb) == 0L || ncol(pb) == 0L) {
+        .scd_stop("EMPTY_INPUT", "input needs at least one gene and one column")
+    }
+    .scd_gene_ids(pb)
+    .scd_counts(SummarizedExperiment::assay(pb, "counts"), "counts")
     meta <- S4Vectors::metadata(pb)$scdonoraudit
     columns <- as.data.frame(SummarizedExperiment::colData(pb))
     registry <- meta$sample_table

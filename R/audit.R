@@ -255,7 +255,11 @@
 #' recorded as a reminder; structural model checks determine whether fitting
 #' can proceed.
 #'
-#' @param pb Output of [preparePseudobulk()].
+#' @param pb Output of [preparePseudobulk()]. The `counts` assay must remain
+#'   nonempty with finite, non-negative integer-valued counts and unique,
+#'   nonempty gene IDs. These requirements and audit metadata consistency are
+#'   rechecked on every call. Valid count edits, row subsets, and column
+#'   reordering are supported.
 #' @param design Either `"independent"` or `"paired"`.
 #' @param contrast Named character vector such as
 #'   `c(numerator="stim", denominator="ctrl")`.

@@ -19,6 +19,8 @@
 #'   status assay for the specific reason.
 #'   Effect plots use unique run IDs for positions and label deletions as
 #'   `omit: <donor ID>`. Unavailable effects retain their position without a point.
+#'   Coverage plots use unique sample IDs for positions and display donor/sample
+#'   labels separately, so identical labels cannot merge different samples.
 #' @importFrom rlang .data
 #' @examples
 #' count_file <- system.file("extdata", "example_counts.csv",
@@ -51,10 +53,15 @@ plotInfluence <- function(result, type, cell_type = NULL, gene_id = NULL) {
         table$status <- ifelse(table$in_baseline, "included",
             tolower(table$reason_code))
         table$sample <- paste(table$donor_id, table$sample_id, sep = " / ")
+        sample_ids <- sort(unique(table$sample_id), method = "radix")
+        labels <- table$sample[match(sample_ids, table$sample_id)]
+        table$sample_key <- factor(table$sample_id, levels = sample_ids)
         return(ggplot2::ggplot(table,
             ggplot2::aes(x = .data$cell_type,
-                y = .data$sample, fill = .data$status)) +
+                y = .data$sample_key, fill = .data$status)) +
             ggplot2::geom_tile(color = "white") +
+            ggplot2::scale_y_discrete(limits = sample_ids, labels = labels,
+                                     drop = FALSE) +
             ggplot2::labs(x = "Cell type", y = "Donor / sample",
                           fill = "Status") +
             .scd_plot_theme())

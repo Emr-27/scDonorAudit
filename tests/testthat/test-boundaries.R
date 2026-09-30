@@ -1,10 +1,15 @@
-boundary_fixture <- function(paired = FALSE) {
+boundary_fixture <- function(paired = FALSE, collision_labels = FALSE) {
     set.seed(1103)
     donor <- if (paired) rep(paste0("d", 1:6), each = 2) else paste0("d", 1:12)
     donor[donor == "d1"] <- "baseline"
     condition <- if (paired) rep(c("ctrl", "stim"), 6) else
         rep(c("ctrl", "stim"), each = 6)
-    samples <- data.frame(sample_id = paste0("s", seq_along(donor)),
+    sample_ids <- paste0("s", seq_along(donor))
+    if (collision_labels) {
+        donor[1:2] <- c("a / b", "a")
+        sample_ids[1:2] <- c("c", "b / c")
+    }
+    samples <- data.frame(sample_id = sample_ids,
         donor_id = donor, condition = condition,
         age = rep(c(21, 35, 28, 42, 33, 26), 2),
         batch = rep(c("a", "b", "a"), 4))
@@ -34,6 +39,73 @@ test_that("both public model entries reject reserved and unsafe covariates", {
             }
         }
     }
+})
+
+test_that("prepared objects are rechecked at both public model entries", {
+    contrast <- c(numerator = "stim", denominator = "ctrl")
+    for (paired in c(FALSE, TRUE)) {
+        pb <- boundary_fixture(paired)
+        design <- if (paired) "paired" else "independent"
+        for (entry in list(auditDesign, assessDonorInfluence)) {
+            for (sparse in c(FALSE, TRUE)) {
+                for (value in c(0.5, -1, NA_real_, NaN, Inf)) {
+                    bad <- pb
+                    counts <- SummarizedExperiment::assay(bad, "counts")
+                    if (sparse) counts <- Matrix::Matrix(counts, sparse = TRUE)
+                    counts[1, 1] <- value
+                    SummarizedExperiment::assay(bad, "counts") <- counts
+                    expect_error(entry(bad, design, contrast), "INVALID_COUNTS")
+                }
+            }
+            bad <- pb
+            rownames(bad)[2] <- rownames(bad)[1]
+            expect_error(entry(bad, design, contrast), "DUPLICATE_GENE_ID")
+            rownames(bad) <- NULL
+            expect_error(entry(bad, design, contrast), "MISSING_GENE_ID")
+            rownames(bad) <- c("", rownames(pb)[-1])
+            expect_error(entry(bad, design, contrast), "MISSING_ID")
+            expect_error(entry(pb[0, ], design, contrast), "EMPTY_INPUT")
+            expect_error(entry(pb[, 0], design, contrast), "EMPTY_INPUT")
+            bad <- pb
+            SummarizedExperiment::assayNames(bad) <- "renamed_counts"
+            expect_error(entry(bad, design, contrast), "MISSING_ASSAY")
+        }
+    }
+})
+
+test_that("legal prepared-object edits and sparse counts remain usable", {
+    contrast <- c(numerator = "stim", denominator = "ctrl")
+    for (paired in c(FALSE, TRUE)) {
+        pb <- boundary_fixture(paired)
+        design <- if (paired) "paired" else "independent"
+        pb <- pb[seq_len(50), rev(seq_len(ncol(pb)))]
+        counts <- SummarizedExperiment::assay(pb, "counts")
+        counts[1, 1] <- counts[1, 1] + 1
+        for (sparse in c(FALSE, TRUE)) {
+            changed <- pb
+            SummarizedExperiment::assay(changed, "counts") <-
+                if (sparse) Matrix::Matrix(counts, sparse = TRUE) else counts
+            expect_no_error(auditDesign(changed, design, contrast))
+            result <- assessDonorInfluence(changed, design, contrast)
+            expect_true(all(as.data.frame(result[["fits"]])$
+                execution_status == "completed"))
+            expect_identical(rownames(result[["results"]][["T"]]), rownames(changed))
+        }
+    }
+})
+
+test_that("coverage positions use sample IDs despite colliding display labels", {
+    result <- assessDonorInfluence(boundary_fixture(collision_labels = TRUE),
+        "independent", c(numerator = "stim", denominator = "ctrl"))
+    original <- result
+    p <- plotInfluence(result, "coverage")
+    built <- ggplot2::ggplot_build(p)
+    rows <- which(p$data$sample == "a / b / c")
+    expect_length(rows, 2)
+    expect_equal(length(unique(built$data[[1]]$y[rows])), 2)
+    expect_identical(as.character(p$data$sample_key), p$data$sample_id)
+    expect_equal(length(built$layout$panel_params[[1]]$y$get_limits()), 12)
+    expect_identical(result, original)
 })
 
 test_that("legal covariates retain the requested reverse contrast", {

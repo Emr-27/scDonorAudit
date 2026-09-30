@@ -15,7 +15,11 @@ auditDesign(
 )
 }
 \arguments{
-\item{pb}{Output of \code{\link[=preparePseudobulk]{preparePseudobulk()}}.}
+\item{pb}{Output of \code{\link[=preparePseudobulk]{preparePseudobulk()}}. The \code{counts} assay must remain
+nonempty with finite, non-negative integer-valued counts and unique,
+nonempty gene IDs. These requirements and audit metadata consistency are
+rechecked on every call. Valid count edits, row subsets, and column
+reordering are supported.}
 
 \item{design}{Either \code{"independent"} or \code{"paired"}.}
 

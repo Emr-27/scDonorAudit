@@ -28,6 +28,8 @@ from design, backend, or gene-level status. Inspect \code{fits} and the gene
 status assay for the specific reason.
 Effect plots use unique run IDs for positions and label deletions as
 \verb{omit: <donor ID>}. Unavailable effects retain their position without a point.
+Coverage plots use unique sample IDs for positions and display donor/sample
+labels separately, so identical labels cannot merge different samples.
 }
 \examples{
 count_file <- system.file("extdata", "example_counts.csv",

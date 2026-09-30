@@ -1,3 +1,12 @@
+# scDonorAudit 0.99.4
+
+- Revalidate prepared counts and gene IDs at both public model entries.
+  Invalid edits fail before auditing or fitting; valid count edits, row
+  subsets, and column reordering remain supported.
+- Use sample IDs for coverage plot positions, keeping donor/sample display
+  labels separate so distinct samples cannot overlap due to label collisions.
+- Add dense and sparse prepared-object mutation regression tests.
+
 # scDonorAudit 0.99.3
 
 - Reject reserved covariate names before they can overwrite model columns.
