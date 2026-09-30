@@ -1,3 +1,12 @@
+# scDonorAudit 0.99.1
+
+- Preserved backend warnings when the same donor refit later fails, and kept
+  each deletion's original design diagnosis when the baseline is unavailable.
+- Added sample-aligned fit records and package/contrast provenance, plus consistency checks
+  for pseudobulk objects whose columns or audit metadata were modified.
+- Clarified the output dictionary, related work, missing effects, observed
+  ranges, and fixed-versus-re-estimated analysis choices in the vignette.
+
 # scDonorAudit 0.99.0
 
 - Fixed factor contrast coding so user R settings cannot reverse or rescale

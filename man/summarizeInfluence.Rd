@@ -17,7 +17,9 @@ A \code{DataFrame} with one row per retained gene and cell type.
 }
 \description{
 A missing or failed deletion remains in the planned denominator. Returned
-maxima describe observed valid refits only and are not significance tests.
+minimum and maximum effects are observed ranges, not confidence intervals
+or significance tests. Interpret a change only alongside \code{n_planned} and
+\code{n_effect_valid}; near-zero sign changes need the material threshold.
 }
 \examples{
 count_file <- system.file("extdata", "example_counts.csv",

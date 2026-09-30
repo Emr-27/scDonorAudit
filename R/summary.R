@@ -1,7 +1,9 @@
 #' Summarize observed donor influence on each gene
 #'
 #' A missing or failed deletion remains in the planned denominator. Returned
-#' maxima describe observed valid refits only and are not significance tests.
+#' minimum and maximum effects are observed ranges, not confidence intervals
+#' or significance tests. Interpret a change only alongside `n_planned` and
+#' `n_effect_valid`; near-zero sign changes need the material threshold.
 #'
 #' @param result Output of [assessDonorInfluence()].
 #' @param effect_threshold Optional positive absolute log2 fold-change threshold

@@ -76,6 +76,9 @@ gene effects. `n_planned` counts all eligible donor deletions, including failed
 ones. `max_abs_delta_observed` describes only deletion fits with valid effects;
 missing fits remain missing. Adjusted p values use one fixed gene family per
 cell type and do not control error across cell types or deletion runs.
+The fit ledger keeps each run's original design diagnosis in
+`design_reason_code` even when a later baseline or backend problem prevents
+execution. See the vignette for the output dictionary and interpretation rules.
 
 AI assistance was used to develop code and documentation. The
 [development provenance](inst/CODE_PROVENANCE.md) records its scope.

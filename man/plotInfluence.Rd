@@ -22,6 +22,11 @@ A \code{ggplot} object.
 \description{
 Plot donor coverage or gene-level influence
 }
+\details{
+Grey influence tiles mark unavailable effects, which may arise
+from design, backend, or gene-level status. Inspect \code{fits} and the gene
+status assay for the specific reason.
+}
 \examples{
 count_file <- system.file("extdata", "example_counts.csv",
                           package = "scDonorAudit")

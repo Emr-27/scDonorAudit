@@ -24,14 +24,24 @@ when one biological donor is removed. A large effect change is descriptive:
 it can reflect real donor heterogeneity, limited precision, or other data
 properties. The package does not decide that a donor should be excluded.
 
-[scuttle](https://bioconductor.org/packages/scuttle) provides cell aggregation,
-while [muscat](https://bioconductor.org/packages/muscat) and
-[dreamlet](https://bioconductor.org/packages/dreamlet) support broader
-pseudobulk analyses. scDonorAudit uses
-[edgeR](https://bioconductor.org/packages/edgeR) for the specified contrast
-and records which whole-donor deletion fits were planned, completed, or
-unavailable. Its contribution is a traceable sensitivity summary rather than
-a new differential-expression test.
+### Related work and scope
+
+[scuttle](https://bioconductor.org/packages/scuttle) provides cell aggregation.
+The following tools and analyses overlap with different parts of this workflow:
+
+| Tool or work | Primary task | Relationship to this package |
+|:--|:--|:--|
+| [muscat](https://bioconductor.org/packages/muscat) and [scran `pseudoBulkDGE()`](https://bioconductor.org/packages/scran) | Multi-sample or cell-type-wise differential expression | Supply established pseudobulk analysis approaches; the audit here concerns changes across a planned set of whole-donor omissions. |
+| [dreamlet](https://bioconductor.org/packages/dreamlet) | Pseudobulk analysis for complex designs | Already reports assay- and gene-level errors; this package adds a narrower two-condition deletion plan and its effect summary. |
+| [scFastDE](https://bioconductor.org/packages/devel/bioc/html/scFastDE.html) | Donor-weighted pseudobulk differential expression, including paired designs | Weighting and deletion sensitivity answer different questions. |
+| [SampleQC](https://github.com/wmacnair/SampleQC) | Multi-sample single-cell quality control | Quality metrics and changes to a specified DE contrast are distinct outputs. |
+| [Study-specific LODO pseudobulk analysis](https://pmc.ncbi.nlm.nih.gov/articles/PMC12991174/) | Refit after excluding each donor | Shows whole-donor deletion is not a new statistical idea. |
+
+These approaches overlap in inputs or aims. scDonorAudit uses
+[edgeR](https://bioconductor.org/packages/edgeR) for a specified two-condition
+contrast and adds a consistent audit of the planned donor omissions, design
+viability, execution events, and observed gene-effect changes. It is not a new
+differential-expression test or a donor-outlier classifier.
 
 The source repository is
 [Emr-27/scDonorAudit](https://github.com/Emr-27/scDonorAudit).
@@ -129,6 +139,40 @@ non-significant tests. Adjusted p values use a fixed baseline gene family
 within each cell type; they do not control error across cell types or deletion
 runs.
 
+The analysis first fixes the eligible samples and complete-pair policy, then
+plans all whole-donor deletions. Genes retained by the full-data filter remain
+the comparison family in each refit. The named contrast and covariate meanings
+also stay fixed. Each successful deletion refit **re-estimates** library-size
+normalization and the edgeR model on its remaining samples. Thus the analysis
+reference is fixed, while fitted parameters are not.
+
+Read each gene in this order: is its baseline effect valid; how many deletions
+were planned; how many effects are comparable; then how large were the observed
+changes? `n_sign_reversal` counts even tiny crossings of zero. With a positive
+`effect_threshold`, `n_material_reversal` requires both effects to cross that
+threshold in opposite directions, and `baseline_near_zero` flags a baseline
+for which a raw sign change is especially easy to overread. The minimum and
+maximum deletion effects are an **observed range**, not a confidence interval.
+An unavailable effect may reflect design failure, backend failure, or a
+gene-level status; it is not evidence of stability.
+
+### Output dictionary
+
+| Component | Meaning |
+|:--|:--|
+| `spec` | Per-cell-type plan status and number of planned donor omissions. |
+| `sample_membership` / `coverage` | Registered sample-by-cell-type combinations and the actual baseline inclusion decisions. |
+| `fits` / `fit_samples` | Baseline and deletion ledger. `design_reason_code` preserves the original design diagnosis; `execution_status`, `reason_code`, and `stage` describe the later execution outcome. The separate `fit_samples` table aligns sample IDs with library sizes and normalization factors for each completed run. |
+| `gene_filter` / `results` | Fixed baseline gene family and gene-by-run effects, tests, validity flags, and gene status codes. |
+| `issues` | Design problems and execution warnings or errors; a run can have both a backend warning and an error. |
+| `config` / `provenance` | Requested design, contrast and thresholds; source preparation, package/R/edgeR versions, and the actual named contrast. |
+
+Design rank deficiency can coexist with an estimable target contrast. A rank
+problem is still a reason to skip fitting and is not relabeled as target
+non-estimability. When a baseline cannot run, the planned deletion rows remain
+in `fits`; `design_reason_code` keeps their independent audit results even if
+their execution outcome becomes `BASELINE_UNAVAILABLE`.
+
 To analyze the `B`-cell data from complete pairs, request the alternative
 policy explicitly. This changes the analysis cohort, so report the excluded
 pair when presenting the result.
@@ -159,6 +203,8 @@ scDonorAudit::plotInfluence(result, "effect", cell_type = "T", gene_id = "g1")
 Before interpreting a gene, inspect `result[["fits"]]`,
 `result[["sample_membership"]]`, and the number of valid deletion runs.
 A failed fit or unestimable contrast limits the observed sensitivity analysis.
+Grey influence tiles mean the effect is unavailable; consult the fit ledger
+and gene status for the specific cause.
 
 ## Reproduce a real single-nucleus example
 
@@ -190,9 +236,14 @@ real_contrast <- c(numerator = "LPS", denominator = "Vehicle")
 real_audit <- scDonorAudit::auditDesign(real_pb, "independent",
     real_contrast, min_cells = 20L)
 as.data.frame(real_audit[["spec"]])
+knitr::kable(as.data.frame(real_audit[["sample_membership"]])[, c(
+    "sample_id", "donor_id", "condition", "n_cells", "in_baseline")])
 real_result <- scDonorAudit::assessDonorInfluence(real_pb, "independent",
     real_contrast, min_cells = 20L)
 table(as.data.frame(real_result[["fits"]])$execution_status)
+knitr::kable(as.data.frame(real_result[["fits"]])[, c(
+    "run_id", "omitted_donor", "execution_status",
+    "design_reason_code", "reason_code")])
 head(as.data.frame(scDonorAudit::summarizeInfluence(real_result))[,
     c("gene_id", "n_planned", "n_effect_valid",
       "max_abs_delta_observed")])
