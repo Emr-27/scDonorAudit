@@ -20,15 +20,31 @@ method for automatically excluding donors.
 The vignette also runs an eight-mouse Astrocyte pseudobulk example derived
 from the public Crowell19 single-nucleus dataset. The bundled counts retain
 all 11,076 genes and are 0.47 MB; source, transformation, and CC BY 4.0
-attribution are documented in the [example data notes](inst/extdata/README-crowell19.md).
+attribution are documented in the
+[example data notes](inst/extdata/README-crowell19.md).
+
+## Installation
+
+The package is currently available from its source repository. From the
+package directory, with the dependencies in `DESCRIPTION` installed, run:
+
+```r
+install.packages(".", repos = NULL, type = "source")
+```
+
+After the package is accepted and released by Bioconductor, the standard
+installation command will be:
+
+```r
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install("scDonorAudit")
+```
 
 ## Minimal local example
 
-Use R with `edgeR`, `SingleCellExperiment`, `SummarizedExperiment` and the
-other dependencies in `DESCRIPTION` installed. From the package directory,
-install the package with `install.packages(".", repos = NULL,
-type = "source")`. The example uses already aggregated counts; each column
-is one observed sample and cell type.
+The example uses already aggregated counts; each column is one observed
+sample and cell type.
 
 ```r
 set.seed(1103)

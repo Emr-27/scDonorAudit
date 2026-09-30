@@ -6,3 +6,5 @@
   counts, unavailable fits, and genes that become all-zero after deletion.
 - Added simulated and Crowell19 Astrocyte pseudobulk walkthroughs, with
   runnable examples for the exported APIs.
+- Added Bioconductor installation guidance, a structured vignette, and
+  in-source attribution for AI-assisted development.

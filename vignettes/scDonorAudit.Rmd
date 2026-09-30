@@ -1,6 +1,11 @@
 ---
 title: "Auditing donor influence in pseudobulk analysis"
-output: rmarkdown::html_vignette
+author: "Fuhao Jiang"
+date: "2026-09-30"
+output:
+  BiocStyle::html_document:
+    toc: true
+    toc_depth: 2
 vignette: >
   %\VignetteIndexEntry{Auditing donor influence in pseudobulk analysis}
   %\VignetteEngine{knitr::rmarkdown}
@@ -12,10 +17,44 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7,
                       fig.height = 4)
 ```
 
+## Introduction
+
 This package asks how a **fixed two-condition pseudobulk analysis** changes
 when one biological donor is removed. A large effect change is descriptive:
 it can reflect real donor heterogeneity, limited precision, or other data
 properties. The package does not decide that a donor should be excluded.
+
+[scuttle](https://bioconductor.org/packages/scuttle) provides cell aggregation,
+while [muscat](https://bioconductor.org/packages/muscat) and
+[dreamlet](https://bioconductor.org/packages/dreamlet) support broader
+pseudobulk analyses. scDonorAudit uses
+[edgeR](https://bioconductor.org/packages/edgeR) for the specified contrast
+and records which whole-donor deletion fits were planned, completed, or
+unavailable. Its contribution is a traceable sensitivity summary rather than
+a new differential-expression test.
+
+The source repository is
+[Emr-27/scDonorAudit](https://github.com/Emr-27/scDonorAudit).
+
+## Installation
+
+After Bioconductor accepts and releases the package, its standard installation
+command will be:
+
+```{r bioconductor-installation, eval=FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install("scDonorAudit")
+library(scDonorAudit)
+```
+
+For the current source version, install from a checked-out package directory
+after installing the dependencies listed in `DESCRIPTION`:
+
+```{r source-installation, eval=FALSE}
+install.packages(".", repos = NULL, type = "source")
+library(scDonorAudit)
+```
 
 ## Construct an auditable example
 

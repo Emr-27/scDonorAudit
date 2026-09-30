@@ -1,3 +1,5 @@
+# AI-assisted source (OpenAI Codex); see inst/CODE_PROVENANCE.md.
+
 #' Prepare donor-aware pseudobulk counts
 #'
 #' Aggregates an in-memory `SingleCellExperiment` by sample and cell type, or

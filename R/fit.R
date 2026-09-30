@@ -1,3 +1,5 @@
+# AI-assisted source (OpenAI Codex); see inst/CODE_PROVENANCE.md.
+
 .scd_fit_settings <- function(filter_args, backend_args) {
     defaults <- list(min.count = 10, min.total.count = 15,
                      large.n = 10, min.prop = 0.7)

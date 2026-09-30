@@ -1,3 +1,5 @@
+# AI-assisted source (OpenAI Codex); see inst/CODE_PROVENANCE.md.
+
 #' Summarize observed donor influence on each gene
 #'
 #' A missing or failed deletion remains in the planned denominator. Returned

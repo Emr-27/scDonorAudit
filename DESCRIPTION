@@ -27,6 +27,7 @@ Imports:
     stats,
     SummarizedExperiment
 Suggests:
+    BiocStyle,
     knitr,
     rmarkdown,
     testthat (>= 3.0.0)
