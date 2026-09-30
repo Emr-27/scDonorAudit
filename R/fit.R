@@ -1,4 +1,5 @@
-# AI-assisted source (OpenAI Codex); see inst/CODE_PROVENANCE.md.
+# Package code provenance: OpenAI Codex assisted development of the R
+# implementation and tests. See inst/CODE_PROVENANCE.md for the scope.
 
 .scd_fit_settings <- function(filter_args, backend_args) {
     defaults <- list(min.count = 10, min.total.count = 15,

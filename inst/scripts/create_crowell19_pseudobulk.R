@@ -1,6 +1,7 @@
 #!/usr/bin/env Rscript
 
-# AI-assisted source (OpenAI Codex); see inst/CODE_PROVENANCE.md.
+# OpenAI Codex assisted development of this example-data preparation script;
+# see inst/CODE_PROVENANCE.md.
 
 # Create an attribution-ready Astrocyte pseudobulk from EH3297.
 # Usage: Rscript create_crowell19_pseudobulk.R <EH3297-Rda> <output-directory>

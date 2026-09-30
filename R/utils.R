@@ -1,5 +1,3 @@
-# AI-assisted source (OpenAI Codex); see inst/CODE_PROVENANCE.md.
-
 .scd_stop <- function(code, detail) {
     stop(sprintf("[%s] %s", code, detail), call. = FALSE)
 }

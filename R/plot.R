@@ -1,5 +1,3 @@
-# AI-assisted source (OpenAI Codex); see inst/CODE_PROVENANCE.md.
-
 .scd_plot_theme <- function() {
     ggplot2::theme_minimal() +
         ggplot2::theme(
