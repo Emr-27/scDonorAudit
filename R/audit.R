@@ -207,6 +207,7 @@
                 omitted_donor = omissions[j],
                 execution_status = if (checked$status == "OK") "ready" else
                     "skipped", reason_code = checked$status,
+                design_reason_code = checked$status,
                 stage = "design", n_samples = length(run_indices),
                 n_donors = if (pair_blocked) 0L else
                     length(unique(data$donor_id[if (is.na(omissions[j]))

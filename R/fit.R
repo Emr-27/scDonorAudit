@@ -120,7 +120,11 @@
 #' @param backend_args Named list with `robust`. Other backend options,
 #'   including `prior.count`, use the defaults of the installed edgeR version.
 #' @return A `SimpleList` containing per-cell-type results, fit ledger,
-#'   sample membership, gene filter, coverage, issues, and configuration.
+#'   sample membership, gene filter, coverage, issues, configuration, and
+#'   provenance. In `fits`, `design_reason_code` preserves the pre-fit design
+#'   audit even when `reason_code` later reports baseline or backend failure.
+#'   `fit_samples` records the sample ID, library size, and normalization
+#'   factor for every sample in each completed run.
 #' @examples
 #' count_file <- system.file("extdata", "example_counts.csv",
 #'                           package = "scDonorAudit")
@@ -153,6 +157,7 @@ assessDonorInfluence <- function(pb, design, contrast, min_cells = NULL,
     fit_tables <- list()
     filters <- list()
     problems <- list()
+    fit_samples <- list()
     for (cell in names(audited$internal)) {
         info <- audited$internal[[cell]]
         runs <- audited$runs[audited$runs$cell_type == cell, , drop = FALSE]
@@ -222,6 +227,13 @@ assessDonorInfluence <- function(pb, design, contrast, min_cells = NULL,
                                                conditionMessage(w))
                         invokeRestart("muffleWarning")
                     }), error = function(e) e)
+                if (length(warnings$messages)) {
+                    problems[[length(problems) + 1L]] <- data.frame(
+                        cell_type = cell, run_id = runs$run_id[j],
+                        stage = "backend", reason_code = "BACKEND_WARNING",
+                        message = paste(unique(warnings$messages),
+                                        collapse = " | "))
+                }
                 if (inherits(fitted, "error")) {
                     runs$execution_status[j] <- "failed"
                     runs$reason_code[j] <- "BACKEND_ERROR"
@@ -253,13 +265,12 @@ assessDonorInfluence <- function(pb, design, contrast, min_cells = NULL,
                     collapse = ",")
                 runs$design_columns[j] <- paste(fitted$design_columns,
                     collapse = ",")
-                if (length(warnings$messages)) {
-                    problems[[length(problems) + 1L]] <- data.frame(
-                        cell_type = cell, run_id = runs$run_id[j],
-                        stage = "backend", reason_code = "BACKEND_WARNING",
-                        message = paste(unique(warnings$messages),
-                                        collapse = " | "))
-                }
+                fit_samples[[length(fit_samples) + 1L]] <- data.frame(
+                    cell_type = cell, run_id = runs$run_id[j],
+                    sample_id = data$sample_id,
+                    library_size = as.numeric(fitted$library_size),
+                    norm_factor = as.numeric(fitted$norm_factors),
+                    stringsAsFactors = FALSE)
             }
         }
         results[[cell]] <- se
@@ -269,19 +280,36 @@ assessDonorInfluence <- function(pb, design, contrast, min_cells = NULL,
     rownames(fits) <- NULL
     gene_filter <- do.call(rbind, filters)
     rownames(gene_filter) <- NULL
+    sample_fits <- if (length(fit_samples)) do.call(rbind, fit_samples) else
+        data.frame(cell_type = character(), run_id = character(),
+                   sample_id = character(), library_size = numeric(),
+                   norm_factor = numeric())
+    rownames(sample_fits) <- NULL
     issues <- if (length(problems)) do.call(rbind, problems) else
         data.frame(cell_type = character(), run_id = character(),
                    stage = character(), reason_code = character(),
                    message = character())
-    failed_design <- fits[fits$reason_code != "OK", c("cell_type", "run_id",
-        "stage", "reason_code"), drop = FALSE]
-    if (nrow(failed_design)) {
-        failed_design$message <- ""
-        issues <- rbind(issues, failed_design)
+    design_issues <- fits[fits$design_reason_code != "OK",
+        c("cell_type", "run_id", "design_reason_code"), drop = FALSE]
+    if (nrow(design_issues)) {
+        names(design_issues)[3L] <- "reason_code"
+        design_issues$stage <- "design"
+        design_issues$message <- ""
+        issues <- rbind(issues, design_issues[, names(issues)])
+    }
+    execution_issues <- fits[fits$reason_code != "OK" &
+        !fits$reason_code %in% c("FILTER_ERROR", "BACKEND_ERROR") &
+        (fits$stage != "design" |
+         fits$reason_code != fits$design_reason_code),
+        c("cell_type", "run_id", "stage", "reason_code"), drop = FALSE]
+    if (nrow(execution_issues)) {
+        execution_issues$message <- ""
+        issues <- rbind(issues, execution_issues)
     }
     S4Vectors::SimpleList(
         results = S4Vectors::SimpleList(results),
         fits = S4Vectors::DataFrame(fits),
+        fit_samples = S4Vectors::DataFrame(sample_fits),
         spec = S4Vectors::DataFrame(audited$spec),
         sample_membership = S4Vectors::DataFrame(audited$samples),
         gene_filter = S4Vectors::DataFrame(gene_filter),
@@ -289,8 +317,11 @@ assessDonorInfluence <- function(pb, design, contrast, min_cells = NULL,
         issues = S4Vectors::DataFrame(issues),
         config = c(options, settings,
             list(adjustment = "BH_within_cell_type",
-                 schema_version = "0.2")),
+                 schema_version = "0.3")),
         provenance = list(input = audited$preparation,
+            scDonorAudit_version = as.character(
+                utils::packageVersion("scDonorAudit")),
+            contrast = options$contrast,
             edgeR_version = as.character(utils::packageVersion("edgeR")),
             R_version = as.character(getRversion())))
 }

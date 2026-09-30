@@ -151,6 +151,61 @@
         is.null(S4Vectors::metadata(pb)$scdonoraudit)) {
         .scd_stop("INVALID_PSEUDOBULK", "use preparePseudobulk() first")
     }
+    meta <- S4Vectors::metadata(pb)$scdonoraudit
+    columns <- as.data.frame(SummarizedExperiment::colData(pb))
+    registry <- meta$sample_table
+    coverage <- meta$coverage
+    core <- c("sample_id", "donor_id", "condition")
+    if (!is.data.frame(registry) || !is.data.frame(coverage) ||
+        !all(c(core, "cell_type", "observed", "n_cells") %in%
+             names(coverage)) ||
+        !all(c(core, "cell_type", "pb_id", "n_cells") %in%
+             names(columns)) || !all(core %in% names(registry)) ||
+        !is.logical(coverage$observed) || anyNA(coverage$observed) ||
+        anyNA(columns[, c(core, "cell_type", "pb_id"), drop = FALSE]) ||
+        anyNA(coverage[, c(core, "cell_type"), drop = FALSE])) {
+        .scd_stop("INVALID_PSEUDOBULK", "audit metadata is incomplete")
+    }
+    key <- function(x) paste0(nchar(x$sample_id), ":", x$sample_id,
+                              x$cell_type)
+    column_key <- key(columns)
+    coverage_key <- key(coverage)
+    observed <- coverage[coverage$observed, , drop = FALSE]
+    observed_key <- key(observed)
+    sample_index <- match(coverage$sample_id, registry$sample_id)
+    column_index <- match(column_key, observed_key)
+    expected_rows <- nrow(registry) * length(unique(coverage$cell_type))
+    if (anyDuplicated(registry$sample_id) ||
+        anyDuplicated(columns$pb_id) || anyDuplicated(column_key) ||
+        anyDuplicated(coverage_key) || nrow(coverage) != expected_rows ||
+        nrow(columns) != nrow(observed) || anyNA(sample_index) ||
+        anyNA(column_index) ||
+        !identical(colnames(pb), as.character(columns$pb_id))) {
+        .scd_stop("STALE_PSEUDOBULK", "registry or coverage differs from columns")
+    }
+    for (field in core[-1L]) {
+        if (!identical(as.character(coverage[[field]]),
+                       as.character(registry[[field]][sample_index])) ||
+            !identical(as.character(columns[[field]]),
+                       as.character(observed[[field]][column_index]))) {
+            .scd_stop("STALE_PSEUDOBULK", paste0(field,
+                " differs between registry, coverage, and columns"))
+        }
+    }
+    if (!identical(as.character(columns$n_cells),
+                   as.character(observed$n_cells[column_index])) ||
+        any(!coverage$observed & !is.na(coverage$n_cells))) {
+        .scd_stop("STALE_PSEUDOBULK", "cell counts differ from coverage")
+    }
+    for (field in meta$preparation$sample_vars) {
+        if (!field %in% names(registry) || !field %in% names(columns) ||
+            !identical(as.character(columns[[field]]),
+                       as.character(registry[[field]][match(
+                           columns$sample_id, registry$sample_id)]))) {
+            .scd_stop("STALE_PSEUDOBULK", paste0(field,
+                " differs between registry and columns"))
+        }
+    }
     invisible(TRUE)
 }
 

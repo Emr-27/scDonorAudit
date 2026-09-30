@@ -14,6 +14,9 @@
 #' @param gene_id Explicit gene IDs; a nonempty vector for `"influence"`
 #'   and one ID for `"effect"`.
 #' @return A `ggplot` object.
+#' @details Grey influence tiles mark unavailable effects, which may arise
+#'   from design, backend, or gene-level status. Inspect `fits` and the gene
+#'   status assay for the specific reason.
 #' @importFrom rlang .data
 #' @examples
 #' count_file <- system.file("extdata", "example_counts.csv",
@@ -90,7 +93,8 @@ plotInfluence <- function(result, type, cell_type = NULL, gene_id = NULL) {
             ggplot2::labs(x = "Omitted donor", y = "Gene ID",
                 fill = "Change in log2FC",
                 title = paste("Donor influence:", cell_type),
-                subtitle = "Grey tiles were not estimable") +
+                subtitle = paste("Grey: effect unavailable; see fit and gene",
+                                 "status for the reason")) +
             .scd_plot_theme() +
             ggplot2::theme(axis.text.x = ggplot2::element_text(
                 angle = 60, hjust = 1, vjust = 1, size = 8)))

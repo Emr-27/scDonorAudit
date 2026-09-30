@@ -42,7 +42,11 @@ including \code{prior.count}, use the defaults of the installed edgeR version.}
 }
 \value{
 A \code{SimpleList} containing per-cell-type results, fit ledger,
-sample membership, gene filter, coverage, issues, and configuration.
+sample membership, gene filter, coverage, issues, configuration, and
+provenance. In \code{fits}, \code{design_reason_code} preserves the pre-fit design
+audit even when \code{reason_code} later reports baseline or backend failure.
+\code{fit_samples} records the sample ID, library size, and normalization
+factor for every sample in each completed run.
 }
 \description{
 Fits an edgeR quasi-likelihood model to a fixed baseline gene family in

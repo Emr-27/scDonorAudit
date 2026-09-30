@@ -39,6 +39,19 @@ test_that("independent workflow returns comparable donor refits", {
     expect_equal(nrow(summary), nrow(observed))
     expect_true(all(summary$n_planned == 8L))
     expect_true(all(summary$n_effect_valid == 8L))
+    expect_identical(result[["provenance"]]$contrast, contrast)
+    expect_identical(result[["provenance"]]$scDonorAudit_version,
+                     as.character(utils::packageVersion("scDonorAudit")))
+    samples <- as.data.frame(result[["fit_samples"]])
+    full <- samples[samples$run_id == "baseline", ]
+    expect_identical(full$sample_id, paste0("s", 1:8))
+    expect_equal(full$library_size,
+        as.numeric(strsplit(fits$library_sizes[1L], ",")[[1L]]))
+    expect_equal(full$norm_factor,
+        as.numeric(strsplit(fits$norm_factors[1L], ",")[[1L]]),
+        tolerance = 1e-6)
+    expect_false("s1" %in% samples$sample_id[
+        samples$run_id == fits$run_id[2L]])
 })
 
 test_that("pair policy records a blocked and a reduced cohort", {
@@ -222,7 +235,9 @@ test_that("baseline and donor refit agree with a direct edgeR analysis", {
         y <- edgeR::DGEList(counts = as.matrix(counts[kept, use, drop = FALSE]))
         y <- edgeR::normLibSizes(y, method = "TMM")
         group <- factor(info$condition[use], levels = c("ctrl", "stim"))
-        design <- stats::model.matrix(~ group)
+        design <- stats::model.matrix(~ group,
+            contrasts.arg = list(group = stats::contr.treatment(
+                levels(group), base = 1L)))
         fit <- edgeR::glmQLFit(y, design = design, dispersion = NULL,
             abundance.trend = TRUE, robust = TRUE, legacy = FALSE,
             top.proportion = NULL)
@@ -273,7 +288,12 @@ test_that("paired refit after removing the reference donor matches edgeR", {
         donor_id <- factor(info$donor_id[use])
         condition <- factor(info$condition[use],
                             levels = c("ctrl", "stim"))
-        design <- stats::model.matrix(~ donor_id + condition)
+        design <- stats::model.matrix(~ donor_id + condition,
+            contrasts.arg = list(
+                donor_id = stats::contr.treatment(levels(donor_id),
+                                                   base = 1L),
+                condition = stats::contr.treatment(levels(condition),
+                                                    base = 1L)))
         y <- edgeR::DGEList(counts = as.matrix(counts[kept, use, drop = FALSE]))
         y <- edgeR::normLibSizes(y, method = "TMM")
         fit <- edgeR::glmQLFit(y, design = design, dispersion = NULL,
@@ -342,6 +362,15 @@ test_that("design audit distinguishes confounding, no df, missing group and zero
         contrast)[["runs"]])
     expect_identical(runs$reason_code[1L], "NO_RESIDUAL_DF")
     expect_true(all(runs$reason_code[-1L] == "MISSING_CONDITION"))
+    unavailable <- assessDonorInfluence(two_samples, "independent", contrast)
+    fits <- as.data.frame(unavailable[["fits"]])
+    expect_identical(fits$design_reason_code, runs$reason_code)
+    expect_true(all(fits$reason_code[-1L] == "BASELINE_UNAVAILABLE"))
+    expect_true(all(fits$stage[-1L] == "baseline"))
+    expect_identical(fits$target_estimable, runs$target_estimable)
+    issues <- as.data.frame(unavailable[["issues"]])
+    expect_true(all(c("MISSING_CONDITION", "BASELINE_UNAVAILABLE") %in%
+                    issues$reason_code))
 
     zero <- SummarizedExperiment::assay(pb, "counts")
     zero[, 1L] <- 0
@@ -499,7 +528,8 @@ test_that("named contrast has a fixed meaning under user factor settings", {
         response <- 2 * (data$condition == "stim") +
             3 * (data$batch == "B") +
             if (paired) rep(seq_len(4), each = 2) else 0
-        designs <- lapply(c("contr.treatment", "contr.sum"), function(code) {
+        designs <- lapply(c("contr.treatment", "contr.sum",
+                            "contr.helmert"), function(code) {
             options(contrasts = c(code, "contr.poly"))
             before <- getOption("contrasts")
             design <- scDonorAudit:::.scd_make_design(data, config, spec)
@@ -508,6 +538,19 @@ test_that("named contrast has a fixed meaning under user factor settings", {
         })
         expect_identical(designs[[1L]]$status, "OK")
         expect_equal(designs[[1L]]$matrix, designs[[2L]]$matrix)
+        expect_equal(designs[[1L]]$matrix, designs[[3L]]$matrix)
+        explicit <- data.frame(
+            donor_id = factor(data$donor_id,
+                levels = sort(unique(data$donor_id))),
+            condition = factor(data$condition, levels = c("ctrl", "stim")),
+            batch = factor(data$batch, levels = c("A", "B")))
+        predictors <- c(if (paired) "donor_id", "condition", "batch")
+        coding <- lapply(explicit[predictors][vapply(
+            explicit[predictors], is.factor, logical(1))],
+            function(x) stats::contr.treatment(levels(x), base = 1L))
+        reference <- stats::model.matrix(stats::reformulate(predictors),
+            data = explicit, contrasts.arg = coding)
+        expect_equal(designs[[1L]]$matrix, reference)
         for (design in designs) {
             coefficients <- stats::lm.fit(design$matrix, response)$coefficients
             expect_equal(sum(design$contrast * coefficients), 2,
@@ -678,6 +721,54 @@ test_that("backend warnings are recorded while the fit completes", {
     expect_true(all(fits$execution_status == "completed"))
     expect_true(any(issues$reason_code == "BACKEND_WARNING" &
         grepl("injected backend warning", issues$message, fixed = TRUE)))
+})
+
+test_that("warning then error retains both events and later donor fits", {
+    pb <- make_fixture()
+    original_fit <- scDonorAudit:::.scd_fit_run
+    calls <- 0L
+    testthat::local_mocked_bindings(
+        .scd_fit_run = function(...) {
+            calls <<- calls + 1L
+            if (calls == 2L) {
+                warning("warning before injected error")
+                stop("injected backend error")
+            }
+            original_fit(...)
+        }, .package = "scDonorAudit")
+    result <- assessDonorInfluence(pb, "independent",
+        c(numerator = "stim", denominator = "ctrl"))
+    fits <- as.data.frame(result[["fits"]])
+    issues <- as.data.frame(result[["issues"]])
+    events <- issues[issues$run_id == fits$run_id[2L], ]
+    expect_identical(fits$execution_status[1:3],
+                     c("completed", "failed", "completed"))
+    expect_identical(fits$design_reason_code[2L], "OK")
+    expect_true(all(c("BACKEND_WARNING", "BACKEND_ERROR") %in%
+                    events$reason_code))
+    expect_true(all(events$stage == "backend"))
+    expect_true(any(grepl("warning before injected error", events$message,
+                          fixed = TRUE)))
+    expect_true(any(grepl("injected backend error", events$message,
+                          fixed = TRUE)))
+    expect_equal(as.data.frame(result[["spec"]])$n_planned, 8L)
+    expect_true(all(summarizeInfluence(result)$n_effect_valid == 7L))
+})
+
+test_that("prepared coverage follows column order but rejects stale edits", {
+    pb <- make_fixture()
+    contrast <- c(numerator = "stim", denominator = "ctrl")
+    reordered <- pb[, rev(seq_len(ncol(pb)))]
+    expect_equal(nrow(as.data.frame(auditDesign(reordered, "independent",
+        contrast)[["runs"]])), 9L)
+    expect_error(auditDesign(pb[, -1L], "independent", contrast),
+                 "STALE_PSEUDOBULK")
+    changed <- pb
+    cd <- SummarizedExperiment::colData(changed)
+    cd$condition[1L] <- "stim"
+    SummarizedExperiment::colData(changed) <- cd
+    expect_error(auditDesign(changed, "independent", contrast),
+                 "STALE_PSEUDOBULK")
 })
 
 test_that("cell-level and preaggregated inputs agree on the same counts", {
