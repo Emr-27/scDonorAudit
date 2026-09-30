@@ -1,0 +1,9 @@
+"sample_id","donor_id","condition","cell_type","n_cells"
+"LC016","LC016","Vehicle","Astrocytes",151
+"LC017","LC017","LPS","Astrocytes",105
+"LC019","LC019","Vehicle","Astrocytes",231
+"LC020","LC020","LPS","Astrocytes",299
+"LC022","LC022","Vehicle","Astrocytes",270
+"LC023","LC023","LPS","Astrocytes",209
+"LC025","LC025","Vehicle","Astrocytes",114
+"LC026","LC026","LPS","Astrocytes",361

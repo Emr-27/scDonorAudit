@@ -37,7 +37,8 @@ type's baseline analysis.}
 \item{filter_args}{Named list of \code{filterByExpr} options: \code{min.count},
 \code{min.total.count}, \code{large.n}, and \code{min.prop}.}
 
-\item{backend_args}{Named list with \code{robust} and \code{prior.count}.}
+\item{backend_args}{Named list with \code{robust}. Other backend options,
+including \code{prior.count}, use the defaults of the installed edgeR version.}
 }
 \value{
 A \code{SimpleList} containing per-cell-type results, fit ledger,

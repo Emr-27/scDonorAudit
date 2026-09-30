@@ -119,6 +119,50 @@ Before interpreting a gene, inspect `result[["fits"]]`,
 `result[["sample_membership"]]`, and the number of valid deletion runs.
 A failed fit or unestimable contrast limits the observed sensitivity analysis.
 
+## Reproduce a real single-nucleus example
+
+The package includes a compact pseudobulk derived from the public
+[Crowell19 mouse cortex dataset](https://doi.org/10.6084/m9.figshare.8976473.v1)
+(ExperimentHub `EH3297`). Raw counts from 1,740 Astrocyte nuclei were summed
+within each of eight mice, retaining all 11,076 genes. Four mice received LPS
+and four received Vehicle. The original single-nucleus object is available
+through ExperimentHub and is not bundled here. The included
+`extdata/README-crowell19.md` records the transformation, attribution, and
+source's CC BY 4.0 license.
+
+```{r real-data}
+count_file <- system.file("extdata", "crowell19_astrocyte_counts.csv",
+                          package = "scDonorAudit")
+sample_file <- system.file("extdata", "crowell19_astrocyte_samples.csv",
+                           package = "scDonorAudit")
+real_counts <- as.matrix(utils::read.csv(count_file, row.names = 1,
+    check.names = FALSE))
+real_samples <- utils::read.csv(sample_file)
+real_source <- SummarizedExperiment::SummarizedExperiment(
+    assays = list(counts = real_counts),
+    colData = S4Vectors::DataFrame(real_samples))
+real_registry <- real_samples[, c("sample_id", "donor_id", "condition")]
+real_pb <- scDonorAudit::preparePseudobulk(real_source, "sample_id",
+    "donor_id", "condition", "cell_type", sample_table = real_registry,
+    n_cells = "n_cells")
+real_contrast <- c(numerator = "LPS", denominator = "Vehicle")
+real_audit <- scDonorAudit::auditDesign(real_pb, "independent",
+    real_contrast, min_cells = 20L)
+as.data.frame(real_audit[["spec"]])
+real_result <- scDonorAudit::assessDonorInfluence(real_pb, "independent",
+    real_contrast, min_cells = 20L)
+table(as.data.frame(real_result[["fits"]])$execution_status)
+head(as.data.frame(scDonorAudit::summarizeInfluence(real_result))[,
+    c("gene_id", "n_planned", "n_effect_valid",
+      "max_abs_delta_observed")])
+```
+
+This example demonstrates the data and audit workflow. Eight mice offer
+limited replication, especially after one is omitted. A large observed effect
+change can reflect biological heterogeneity or imprecision; it does not label
+a mouse for exclusion. The p values are those of the specified edgeR model,
+not a test that a donor is aberrant.
+
 ## Session information
 
 ```{r session-info}

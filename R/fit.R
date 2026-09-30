@@ -14,7 +14,7 @@
         }
         defaults[[name]] <- value
     }
-    backend <- list(robust = TRUE, prior.count = 0.125)
+    backend <- list(robust = TRUE)
     if (!is.list(backend_args) || is.null(names(backend_args)) &&
         length(backend_args) || anyDuplicated(names(backend_args)) ||
         !all(names(backend_args) %in% names(backend))) {
@@ -22,10 +22,8 @@
     }
     for (name in names(backend_args)) backend[[name]] <- backend_args[[name]]
     if (!is.logical(backend$robust) || length(backend$robust) != 1L ||
-        is.na(backend$robust) || !is.numeric(backend$prior.count) ||
-        length(backend$prior.count) != 1L ||
-        !is.finite(backend$prior.count) || backend$prior.count < 0) {
-        .scd_stop("INVALID_BACKEND_ARGS", "invalid robust or prior.count")
+        is.na(backend$robust)) {
+        .scd_stop("INVALID_BACKEND_ARGS", "invalid robust")
     }
     list(filter = defaults, backend = backend)
 }
@@ -65,20 +63,8 @@
     list(test_valid = valid, adjusted = adjusted)
 }
 
-.scd_fit_run <- function(counts, data, design, settings, family_size) {
+.scd_result_from_table <- function(tab, counts, data, active, family_size) {
     all_zero <- Matrix::rowSums(counts) == 0
-    active <- which(!all_zero)
-    if (!length(active)) .scd_stop("ALL_ZERO_RUN", "all genes are zero")
-    use_counts <- as.matrix(counts[active, , drop = FALSE])
-    y <- edgeR::DGEList(counts = use_counts)
-    y <- edgeR::normLibSizes(y, method = "TMM")
-    fitted <- edgeR::glmQLFit(y, design = design$matrix,
-        dispersion = NULL, abundance.trend = TRUE,
-        robust = settings$backend$robust, legacy = FALSE,
-        top.proportion = NULL,
-        prior.count = settings$backend$prior.count)
-    tested <- edgeR::glmQLFTest(fitted, contrast = design$contrast)
-    tab <- tested$table
     effect <- rep(NA_real_, family_size)
     p <- padj <- rep(NA_real_, family_size)
     effect[active] <- tab$logFC
@@ -98,9 +84,25 @@
     code[all_zero] <- 1L
     list(effect = effect, p = p, padj = padj,
          effect_valid = effect_valid, test_valid = test_valid,
-         code = code, library_size = y$samples$lib.size,
-         norm_factors = y$samples$norm.factors,
-         design_columns = colnames(design$matrix))
+         code = code)
+}
+
+.scd_fit_run <- function(counts, data, design, settings, family_size) {
+    active <- which(Matrix::rowSums(counts) != 0)
+    if (!length(active)) .scd_stop("ALL_ZERO_RUN", "all genes are zero")
+    use_counts <- as.matrix(counts[active, , drop = FALSE])
+    y <- edgeR::DGEList(counts = use_counts)
+    y <- edgeR::normLibSizes(y, method = "TMM")
+    fitted <- edgeR::glmQLFit(y, design = design$matrix,
+        dispersion = NULL, abundance.trend = TRUE,
+        robust = settings$backend$robust, legacy = FALSE,
+        top.proportion = NULL)
+    tested <- edgeR::glmQLFTest(fitted, contrast = design$contrast)
+    result <- .scd_result_from_table(tested$table, counts, data,
+        active, family_size)
+    c(result, list(library_size = y$samples$lib.size,
+        norm_factors = y$samples$norm.factors,
+        design_columns = colnames(design$matrix)))
 }
 
 #' Assess the influence of omitting each donor
@@ -112,7 +114,8 @@
 #' @inheritParams auditDesign
 #' @param filter_args Named list of `filterByExpr` options: `min.count`,
 #'   `min.total.count`, `large.n`, and `min.prop`.
-#' @param backend_args Named list with `robust` and `prior.count`.
+#' @param backend_args Named list with `robust`. Other backend options,
+#'   including `prior.count`, use the defaults of the installed edgeR version.
 #' @return A `SimpleList` containing per-cell-type results, fit ledger,
 #'   sample membership, gene filter, coverage, issues, and configuration.
 #' @examples
