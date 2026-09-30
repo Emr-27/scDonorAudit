@@ -24,7 +24,9 @@ auditDesign(
 
 \item{min_cells}{Optional minimum cell count per sample/cell type.}
 
-\item{covariates}{Names of sample-level covariates retained during preparation.}
+\item{covariates}{Names of sample-level covariates retained during preparation.
+Names must be syntactic R names other than \code{.} and must not be
+\code{sample_id}, \code{donor_id}, \code{condition}, \code{cell_type}, \code{n_cells}, or \code{pb_id}.}
 
 \item{pair_policy}{\code{"strict"} blocks a cell type with an incomplete eligible
 pair; \code{"complete_pairs"} drops both samples of that donor from that cell

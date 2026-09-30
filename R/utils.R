@@ -239,6 +239,15 @@
         any(!nzchar(covariates)) || anyDuplicated(covariates)) {
         .scd_stop("INVALID_ARGUMENT", "covariates must be unique column names")
     }
+    reserved <- c("sample_id", "donor_id", "condition", "cell_type",
+                  "n_cells", "pb_id")
+    if (any(covariates %in% reserved)) {
+        .scd_stop("INVALID_ARGUMENT", "covariates must not use a reserved name")
+    }
+    if (any(covariates == "." | make.names(covariates) != covariates)) {
+        .scd_stop("INVALID_ARGUMENT",
+            "covariates must be syntactic column names other than '.'")
+    }
     list(design = design, contrast = contrast, min_cells = min_cells,
          covariates = covariates, pair_policy = pair_policy,
          min_replicates_warn = min_replicates_warn)

@@ -261,6 +261,8 @@
 #'   `c(numerator="stim", denominator="ctrl")`.
 #' @param min_cells Optional minimum cell count per sample/cell type.
 #' @param covariates Names of sample-level covariates retained during preparation.
+#'   Names must be syntactic R names other than `.` and must not be
+#'   `sample_id`, `donor_id`, `condition`, `cell_type`, `n_cells`, or `pb_id`.
 #' @param pair_policy `"strict"` blocks a cell type with an incomplete eligible
 #'   pair; `"complete_pairs"` drops both samples of that donor from that cell
 #'   type's baseline analysis.

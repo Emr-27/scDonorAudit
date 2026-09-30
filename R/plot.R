@@ -17,6 +17,8 @@
 #' @details Grey influence tiles mark unavailable effects, which may arise
 #'   from design, backend, or gene-level status. Inspect `fits` and the gene
 #'   status assay for the specific reason.
+#'   Effect plots use unique run IDs for positions and label deletions as
+#'   `omit: <donor ID>`. Unavailable effects retain their position without a point.
 #' @importFrom rlang .data
 #' @examples
 #' count_file <- system.file("extdata", "example_counts.csv",
@@ -99,8 +101,9 @@ plotInfluence <- function(result, type, cell_type = NULL, gene_id = NULL) {
             ggplot2::theme(axis.text.x = ggplot2::element_text(
                 angle = 60, hjust = 1, vjust = 1, size = 8)))
     }
-    labels <- c("baseline", donors[-1L])
-    table <- data.frame(run = factor(labels, levels = labels),
+    runs <- as.character(SummarizedExperiment::colData(se)$run_id)
+    labels <- c("baseline", paste0("omit: ", donors[-1L]))
+    table <- data.frame(run = factor(runs, levels = runs),
         logFC = as.numeric(effects[gene_id, ]),
         valid = as.logical(valid[gene_id, ]))
     table$logFC[!table$valid] <- NA_real_
@@ -109,6 +112,7 @@ plotInfluence <- function(result, type, cell_type = NULL, gene_id = NULL) {
         ggplot2::geom_hline(yintercept = table$logFC[1L],
             linetype = "dashed", color = "grey50", na.rm = TRUE) +
         ggplot2::geom_point(size = 2, na.rm = TRUE) +
+        ggplot2::scale_x_discrete(limits = runs, labels = labels, drop = FALSE) +
         ggplot2::labs(x = "Omitted donor", y = "log2 fold-change",
             title = paste(gene_id, "in", cell_type),
             subtitle = "Baseline is the first position; missing refits have no point") +

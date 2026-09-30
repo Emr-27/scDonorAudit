@@ -1,3 +1,11 @@
+# scDonorAudit 0.99.3
+
+- Reject reserved covariate names before they can overwrite model columns.
+- Require syntactic covariate names and reject the special formula term `.`.
+- Use unique run IDs in effect plots, including for donors named `baseline`,
+  and preserve positions for unavailable effects.
+- Add regression tests for both public model entries and plotting boundaries.
+
 # scDonorAudit 0.99.2
 
 - Added the maintainer ORCID and aligned the minimum `testthat` version with
