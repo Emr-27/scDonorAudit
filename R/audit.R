@@ -1,5 +1,3 @@
-# AI-assisted source (OpenAI Codex); see inst/CODE_PROVENANCE.md.
-
 .scd_validate_registry <- function(registry, options) {
     observed_conditions <- sort(unique(registry$condition), method = "radix")
     expected <- sort(unname(options$contrast), method = "radix")

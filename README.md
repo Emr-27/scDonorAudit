@@ -78,5 +78,4 @@ missing fits remain missing. Adjusted p values use one fixed gene family per
 cell type and do not control error across cell types or deletion runs.
 
 AI assistance was used to develop code and documentation. The
-[development provenance](inst/CODE_PROVENANCE.md) records its scope and the
-available validation evidence.
+[development provenance](inst/CODE_PROVENANCE.md) records its scope.

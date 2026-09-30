@@ -1,18 +1,10 @@
 # Development provenance
 
-OpenAI Codex assisted with substantial portions of the R implementation,
-tests, documentation, and the script that derives the bundled Crowell19
-Astrocyte pseudobulk example. The package's named author and maintainer is
-Fuhao Jiang.
+OpenAI Codex assisted in drafting and revising the R implementation, tests,
+documentation, and the script that prepares the bundled Crowell19 Astrocyte
+pseudobulk example. This disclosure covers those components as a whole.
+Fuhao Jiang is the package author and maintainer responsible for reviewing
+and maintaining the code and its scientific interpretation.
 
-The affected source files carry an in-code provenance comment. The package
-source, tests, vignette, and example-data preparation script were drafted and
-revised with AI assistance; the source dataset and its license are attributed
+The original Crowell19 dataset and its CC BY 4.0 license are attributed
 separately in `extdata/README-crowell19.md`.
-
-The repository contains executable tests, a real-data workflow, and source
-attribution for the bundled data. Automated package checks establish that
-the software builds and its tested cases run in the checked environment;
-they do not establish the scientific validity of every downstream analysis.
-
-The disclosed scope covers the code and documentation in this package.
