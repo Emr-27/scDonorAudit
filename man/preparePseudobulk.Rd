@@ -35,7 +35,8 @@ from the object; the table supplies them by \code{sample_id}.}
 containing the number of cells. It is computed for single-cell input.}
 }
 \value{
-A \code{SummarizedExperiment} with raw pseudobulk counts and audit metadata.
+A \code{SummarizedExperiment} with raw pseudobulk counts and audit
+metadata.
 }
 \description{
 Aggregates an in-memory \code{SingleCellExperiment} by sample and cell type, or
@@ -44,18 +45,30 @@ combinations are recorded in \code{metadata(pb)$scdonoraudit$coverage}, not
 inserted as zero-expression columns. A sample registry is needed to see
 samples that are entirely absent from the input object.
 }
+\details{
+Counts must be a numeric base matrix or a numeric \code{Matrix} object
+containing finite non-negative integer values. Logical and pattern
+matrices are rejected with \code{INVALID_COUNTS}. \code{DelayedArray} and disk-backed
+assays are not supported. Cell-level sparse counts are aggregated without
+converting the whole input to a dense matrix. The edgeR backend converts
+only a cell type's much smaller pseudobulk matrix to dense storage.
+For larger datasets, aggregate raw counts upstream and supply an in-memory
+\code{SummarizedExperiment}, a full sample registry, and \code{n_cells} if a minimum
+cell-count threshold will be used. Memory use also depends on the number
+of retained genes, cell types and planned donor deletions.
+}
 \examples{
-count_file <- system.file("extdata", "example_counts.csv",
-                          package = "scDonorAudit")
-sample_file <- system.file("extdata", "example_samples.csv",
-                           package = "scDonorAudit")
+count_file <- system.file('extdata', 'example_counts.csv',
+                          package = 'scDonorAudit')
+sample_file <- system.file('extdata', 'example_samples.csv',
+                           package = 'scDonorAudit')
 counts <- as.matrix(utils::read.csv(count_file, row.names = 1,
                                     check.names = FALSE))
 samples <- utils::read.csv(sample_file)
 se <- SummarizedExperiment::SummarizedExperiment(
     assays = list(counts = counts),
-    colData = S4Vectors::DataFrame(samples, cell_type = "T"))
-pb <- preparePseudobulk(se, "sample_id", "donor_id", "condition",
-                        "cell_type", sample_table = samples)
+    colData = S4Vectors::DataFrame(samples, cell_type = 'T'))
+pb <- preparePseudobulk(se, 'sample_id', 'donor_id', 'condition',
+                        'cell_type', sample_table = samples)
 pb
 }

@@ -1,3 +1,15 @@
+# scDonorAudit 0.99.5
+
+- Reject logical and pattern Matrix counts with an INVALID_COUNTS error,
+  before accessing numeric slots. Numeric sparse counts stay sparse.
+- Return the same 16 typed summary columns when no genes are retained.
+- Split design planning and fit execution into internal helpers while keeping
+  the public interfaces, fixed filtering family and numerical backend intact.
+- Add package help, a complete output/status dictionary, synthetic data
+  provenance, and a runnable mixed coverage/design-failure example.
+- Clarify the in-memory count requirement and preaggregated entry point,
+  method references, functional positioning and AI-assisted development.
+
 # scDonorAudit 0.99.4
 
 - Revalidate prepared counts and gene IDs at both public model entries.

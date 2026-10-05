@@ -13,7 +13,10 @@ summarizeInfluence(result, effect_threshold = NULL)
 for a material sign reversal.}
 }
 \value{
-A \code{DataFrame} with one row per retained gene and cell type.
+A \code{DataFrame} with one row per retained gene and cell type. If there
+are no retained genes, the result has zero rows and the same 16 typed
+columns, including a \code{CharacterList} for \code{max_influence_donors}.
+See \link{scDonorAudit} and the installed \code{OUTPUT_SCHEMA.md} for field meanings.
 }
 \description{
 A missing or failed deletion remains in the planned denominator. Returned
@@ -22,21 +25,21 @@ or significance tests. Interpret a change only alongside \code{n_planned} and
 \code{n_effect_valid}; near-zero sign changes need the material threshold.
 }
 \examples{
-count_file <- system.file("extdata", "example_counts.csv",
-                          package = "scDonorAudit")
-sample_file <- system.file("extdata", "example_samples.csv",
-                           package = "scDonorAudit")
+count_file <- system.file('extdata', 'example_counts.csv',
+                          package = 'scDonorAudit')
+sample_file <- system.file('extdata', 'example_samples.csv',
+                           package = 'scDonorAudit')
 counts <- as.matrix(utils::read.csv(count_file, row.names = 1,
                                     check.names = FALSE))
 samples <- utils::read.csv(sample_file)
 se <- SummarizedExperiment::SummarizedExperiment(
     assays = list(counts = counts),
-    colData = S4Vectors::DataFrame(samples, cell_type = "T"))
-pb <- preparePseudobulk(se, "sample_id", "donor_id", "condition",
-                        "cell_type", sample_table = samples)
-result <- assessDonorInfluence(pb, "independent",
-                               c(numerator = "stim", denominator = "ctrl"))
+    colData = S4Vectors::DataFrame(samples, cell_type = 'T'))
+pb <- preparePseudobulk(se, 'sample_id', 'donor_id', 'condition',
+                        'cell_type', sample_table = samples)
+result <- assessDonorInfluence(pb, 'independent',
+                               c(numerator = 'stim', denominator = 'ctrl'))
 influence <- summarizeInfluence(result, effect_threshold = 0.5)
-head(as.data.frame(influence)[, c("gene_id", "n_effect_valid",
-                                  "max_abs_delta_observed")])
+head(as.data.frame(influence)[, c('gene_id', 'n_effect_valid',
+                                  'max_abs_delta_observed')])
 }

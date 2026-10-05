@@ -17,6 +17,23 @@ which fits were planned, which ran, why others did not, and how each retained
 gene's effect changed. It is an audit layer, not a replacement DE test or a
 method for automatically excluding donors.
 
+| Task | Existing tool | scDonorAudit contribution |
+|:--|:--|:--|
+| Cell aggregation | scuttle | Registered coverage, including absent combinations |
+| Cell-type DE | muscat | Fixed family across whole-donor omission fits |
+| Complex designs | dreamlet | Narrow two-condition edgeR audit, not general mixed models |
+| Model fitting | edgeR | Linked design/execution ledger and per-run sample records |
+| Error reporting | dreamlet already reports errors | Original design reasons plus warnings and backend errors |
+| Interpretation | Custom DE diagnostics | Observed change alongside planned/valid coverage |
+
+This table compares supplied workflow outputs; it is not a performance ranking.
+See `?scDonorAudit`, the runnable vignette and the installed
+[output dictionary](inst/OUTPUT_SCHEMA.md) for fields, types and statuses.
+The vignette demonstrates missing coverage and skipped design failures alongside
+valid effects. Inputs must be in-memory numeric matrices; preaggregated raw
+counts in a `SummarizedExperiment` are supported. Delayed/disk-backed assays
+and logical/pattern matrices are unsupported.
+
 The vignette also runs an eight-mouse Astrocyte pseudobulk example derived
 from the public Crowell19 single-nucleus dataset. The bundled counts retain
 all 11,076 genes and are 0.47 MB; source, transformation, and CC BY 4.0

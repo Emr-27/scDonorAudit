@@ -23,19 +23,20 @@ nonempty gene IDs. These requirements and audit metadata consistency are
 rechecked on every call. Valid count edits, row subsets, and column
 reordering are supported.}
 
-\item{design}{Either \code{"independent"} or \code{"paired"}.}
+\item{design}{Either \code{'independent'} or \code{'paired'}.}
 
 \item{contrast}{Named character vector such as
-\code{c(numerator="stim", denominator="ctrl")}.}
+\code{c(numerator='stim', denominator='ctrl')}.}
 
 \item{min_cells}{Optional minimum cell count per sample/cell type.}
 
-\item{covariates}{Names of sample-level covariates retained during preparation.
+\item{covariates}{Names of sample-level covariates retained during
+preparation.
 Names must be syntactic R names other than \code{.} and must not be
 \code{sample_id}, \code{donor_id}, \code{condition}, \code{cell_type}, \code{n_cells}, or \code{pb_id}.}
 
-\item{pair_policy}{\code{"strict"} blocks a cell type with an incomplete eligible
-pair; \code{"complete_pairs"} drops both samples of that donor from that cell
+\item{pair_policy}{\code{'strict'} blocks a cell type with an incomplete eligible
+pair; \code{'complete_pairs'} drops both samples of that donor from that cell
 type's baseline analysis.}
 
 \item{min_replicates_warn}{Threshold for a descriptive low-replication flag.}
@@ -60,19 +61,19 @@ each cell type, then removes one donor at a time and refits. This is a
 sensitivity analysis, not an automatic rule for excluding donors.
 }
 \examples{
-count_file <- system.file("extdata", "example_counts.csv",
-                          package = "scDonorAudit")
-sample_file <- system.file("extdata", "example_samples.csv",
-                           package = "scDonorAudit")
+count_file <- system.file('extdata', 'example_counts.csv',
+                          package = 'scDonorAudit')
+sample_file <- system.file('extdata', 'example_samples.csv',
+                           package = 'scDonorAudit')
 counts <- as.matrix(utils::read.csv(count_file, row.names = 1,
                                     check.names = FALSE))
 samples <- utils::read.csv(sample_file)
 se <- SummarizedExperiment::SummarizedExperiment(
     assays = list(counts = counts),
-    colData = S4Vectors::DataFrame(samples, cell_type = "T"))
-pb <- preparePseudobulk(se, "sample_id", "donor_id", "condition",
-                        "cell_type", sample_table = samples)
-result <- assessDonorInfluence(pb, "independent",
-                               c(numerator = "stim", denominator = "ctrl"))
-head(as.data.frame(result[["fits"]]))
+    colData = S4Vectors::DataFrame(samples, cell_type = 'T'))
+pb <- preparePseudobulk(se, 'sample_id', 'donor_id', 'condition',
+                        'cell_type', sample_table = samples)
+result <- assessDonorInfluence(pb, 'independent',
+                               c(numerator = 'stim', denominator = 'ctrl'))
+head(as.data.frame(result[['fits']]))
 }

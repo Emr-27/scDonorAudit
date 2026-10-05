@@ -1,7 +1,7 @@
 ---
 title: "Auditing donor influence in pseudobulk analysis"
 author: "Fuhao Jiang"
-date: "2026-09-30"
+date: "2026-10-06"
 output:
   BiocStyle::html_document:
     toc: true
@@ -13,8 +13,7 @@ vignette: >
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7,
-                      fig.height = 4)
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 4)
 ```
 
 ## Introduction
@@ -46,14 +45,33 @@ differential-expression test or a donor-outlier classifier.
 The source repository is
 [Emr-27/scDonorAudit](https://github.com/Emr-27/scDonorAudit).
 
+The following comparison concerns concrete workflow outputs, not numerical
+superiority. Broader DE packages can be used to implement custom deletion
+workflows; these entries describe how this package supplies the audit.
+
+- **Aggregation:** scuttle's `aggregateAcrossCells()` provides general cell
+  aggregation. `preparePseudobulk()` adds a registered sample/cell-type coverage
+  table, including combinations with no observed counts.
+- **DE analysis:** muscat provides cell-type-wise differential-state analysis;
+  dreamlet supports complex designs and weights. scDonorAudit implements one
+  edgeR backend for a specified two-condition independent or paired design.
+- **Omission plan:** this package enumerates whole-donor deletions within each
+  eligible cell type, fixes the baseline gene family and covariate meanings,
+  and retains failed or skipped runs in the planned denominator.
+- **Failure reporting:** dreamlet already exposes assay/gene errors.
+  scDonorAudit links membership, design diagnosis, warning/error events,
+  per-sample normalization and per-gene validity to each planned omission.
+- **Effect summary:** this package reports observed change and effect/test
+  coverage together. These are descriptive diagnostics, not donor quality
+  classifications or calibrated uncertainty intervals.
+
 ## Installation
 
 After Bioconductor accepts and releases the package, its standard installation
 command will be:
 
 ```{r bioconductor-installation, eval=FALSE}
-if (!requireNamespace("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
+if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
 BiocManager::install("scDonorAudit")
 library(scDonorAudit)
 ```
@@ -75,24 +93,17 @@ The full sample registry makes that absence visible.
 
 ```{r input}
 set.seed(1103)
-sample_table <- data.frame(
-    sample_id = paste0("s", seq_len(8)),
-    donor_id = rep(paste0("d", seq_len(4)), each = 2),
-    condition = rep(c("ctrl", "stim"), 4))
-source_rows <- rbind(
-    transform(sample_table, cell_type = "T"),
-    transform(sample_table[seq_len(7), ], cell_type = "B"))
-counts <- matrix(rnbinom(250 * nrow(source_rows), mu = 25, size = 5),
-                 nrow = 250,
-                 dimnames = list(paste0("g", seq_len(250)),
-                                 paste0("column", seq_len(nrow(source_rows)))))
+sample_table <- data.frame(sample_id = paste0("s", seq_len(8)), donor_id = rep(paste0("d",
+    seq_len(4)), each = 2), condition = rep(c("ctrl", "stim"), 4))
+source_rows <- rbind(transform(sample_table, cell_type = "T"), transform(sample_table[seq_len(7),
+    ], cell_type = "B"))
+counts <- matrix(rnbinom(250 * nrow(source_rows), mu = 25, size = 5), nrow = 250,
+    dimnames = list(paste0("g", seq_len(250)), paste0("column", seq_len(nrow(source_rows)))))
 source_rows$n_cells <- 30L
-se <- SummarizedExperiment::SummarizedExperiment(
-    assays = list(counts = counts),
+se <- SummarizedExperiment::SummarizedExperiment(assays = list(counts = counts),
     colData = S4Vectors::DataFrame(source_rows))
-pb <- scDonorAudit::preparePseudobulk(
-    se, "sample_id", "donor_id", "condition", "cell_type",
-    sample_table = sample_table, n_cells = "n_cells")
+pb <- scDonorAudit::preparePseudobulk(se, "sample_id", "donor_id", "condition",
+    "cell_type", sample_table = sample_table, n_cells = "n_cells")
 contrast <- c(numerator = "stim", denominator = "ctrl")
 ```
 
@@ -103,6 +114,14 @@ prove the assay was not normalized upstream. Factor coding is fixed inside
 the design, so a user's global `options("contrasts")` does not change the
 named effect's direction or scale.
 
+Supported assays are in-memory numeric base matrices or numeric `Matrix`
+objects. Logical/pattern matrices and `DelayedArray` or disk-backed assays
+are unsupported. Sparse cell counts remain sparse during aggregation; only
+the smaller cell-type pseudobulk matrices are converted for edgeR fitting.
+For inputs that cannot fit in memory, aggregate raw counts upstream and use
+the preaggregated `SummarizedExperiment` entry point, retaining the full sample
+registry and `n_cells`. Output memory also grows with genes and planned fits.
+
 ## Review the design before fitting
 
 The default paired policy is strict. An incomplete eligible pair blocks that
@@ -111,8 +130,8 @@ cell type without affecting other cell types.
 ```{r audit}
 audit <- scDonorAudit::auditDesign(pb, "paired", contrast)
 as.data.frame(audit[["spec"]])
-subset(as.data.frame(audit[["sample_membership"]]),
-       cell_type == "B" & reason_code != "OK")
+subset(as.data.frame(audit[["sample_membership"]]), cell_type == "B" &
+    reason_code != "OK")
 ```
 
 `plan_status = "not_created"` means a deletion plan was never established for
@@ -123,13 +142,10 @@ that the result was stable.
 
 ```{r fit}
 result <- scDonorAudit::assessDonorInfluence(pb, "paired", contrast)
-subset(as.data.frame(result[["fits"]]),
-       select = c(cell_type, run_id, omitted_donor,
-                  execution_status, reason_code))
-head(as.data.frame(scDonorAudit::summarizeInfluence(result,
-                                                     effect_threshold = 0.5))[,
-    c("cell_type", "gene_id", "n_planned", "n_effect_valid",
-      "max_abs_delta_observed")])
+subset(as.data.frame(result[["fits"]]), select = c(cell_type, run_id, omitted_donor,
+    execution_status, reason_code))
+head(as.data.frame(scDonorAudit::summarizeInfluence(result, effect_threshold = 0.5))[,
+    c("cell_type", "gene_id", "n_planned", "n_effect_valid", "max_abs_delta_observed")])
 ```
 
 The summary's `n_planned` includes all eligible donor deletions, even failed
@@ -167,6 +183,15 @@ gene-level status; it is not evidence of stability.
 | `issues` | Design problems and execution warnings or errors; a run can have both a backend warning and an error. |
 | `config` / `provenance` | Requested design, contrast and thresholds; source preparation, package/R/edgeR versions, and the actual named contrast. |
 
+The complete field/type/status dictionary is installed with the package:
+
+```{r schema-location}
+system.file("OUTPUT_SCHEMA.md", package = "scDonorAudit")
+```
+
+It also documents the 16 typed summary columns, which remain available in
+zero-row summaries when all genes are filtered or all cell types are blocked.
+
 Design rank deficiency can coexist with an estimable target contrast. A rank
 problem is still a reason to skip fitting and is not relabeled as target
 non-estimability. When a baseline cannot run, the planned deletion rows remain
@@ -178,10 +203,9 @@ policy explicitly. This changes the analysis cohort, so report the excluded
 pair when presenting the result.
 
 ```{r complete-pairs}
-reduced <- scDonorAudit::assessDonorInfluence(
-    pb, "paired", contrast, pair_policy = "complete_pairs")
-subset(as.data.frame(reduced[["spec"]]),
-       select = c(cell_type, plan_status, n_planned, n_samples))
+reduced <- scDonorAudit::assessDonorInfluence(pb, "paired", contrast, pair_policy = "complete_pairs")
+subset(as.data.frame(reduced[["spec"]]), select = c(cell_type, plan_status,
+    n_planned, n_samples))
 ```
 
 ## Inspect figures
@@ -195,8 +219,8 @@ scDonorAudit::plotInfluence(result, "coverage")
 ```
 
 ```{r gene-plots}
-scDonorAudit::plotInfluence(result, "influence", cell_type = "T",
-                            gene_id = c("g1", "g2", "g3"))
+scDonorAudit::plotInfluence(result, "influence", cell_type = "T", gene_id = c("g1",
+    "g2", "g3"))
 scDonorAudit::plotInfluence(result, "effect", cell_type = "T", gene_id = "g1")
 ```
 
@@ -205,6 +229,57 @@ Before interpreting a gene, inspect `result[["fits"]]`,
 A failed fit or unestimable contrast limits the observed sensitivity analysis.
 Grey influence tiles mean the effect is unavailable; consult the fit ledger
 and gene status for the specific cause.
+
+## Report missing coverage, design failure and valid effects together
+
+This independent-donor example has eight donors, a missing `B` pseudobulk
+for `d8`, and a batch category observed only in `d1`. The baseline models
+are estimable. Omitting `d1` leaves the frozen batch column all zero, causing
+rank deficiency; the target contrast can still be estimable. The failed
+design is recorded as a skipped run. Other deletions provide valid effects.
+This is a deterministic reporting example, not a model of biological outliers.
+
+```{r mixed-case}
+set.seed(995201)
+mixed_registry <- data.frame(sample_id = paste0("s", seq_len(8)), donor_id = paste0("d",
+    seq_len(8)), condition = rep(c("ctrl", "stim"), each = 4), batch = c("special",
+    rep("common", 7)))
+mixed_rows <- rbind(transform(mixed_registry, cell_type = "T"), transform(mixed_registry[seq_len(7),
+    ], cell_type = "B"))
+mixed_rows$n_cells <- 30L
+mixed_counts <- matrix(rnbinom(250 * nrow(mixed_rows), mu = 25, size = 5),
+    nrow = 250, dimnames = list(paste0("g", seq_len(250)), NULL))
+mixed_source <- SummarizedExperiment::SummarizedExperiment(assays = list(counts = mixed_counts),
+    colData = S4Vectors::DataFrame(mixed_rows))
+mixed_pb <- scDonorAudit::preparePseudobulk(mixed_source, "sample_id",
+    "donor_id", "condition", "cell_type", sample_vars = "batch", sample_table = mixed_registry,
+    n_cells = "n_cells")
+mixed_result <- scDonorAudit::assessDonorInfluence(mixed_pb, "independent",
+    contrast, covariates = "batch")
+mixed_fits <- as.data.frame(mixed_result[["fits"]])
+stopifnot(all(mixed_fits$execution_status[mixed_fits$omitted_donor %in%
+    "d1"] == "skipped"), all(mixed_fits$reason_code[mixed_fits$omitted_donor %in%
+    "d1"] == "DESIGN_RANK_DEFICIENT"))
+knitr::kable(subset(as.data.frame(mixed_result[["sample_membership"]]),
+    !in_baseline))
+knitr::kable(mixed_fits[, c("cell_type", "run_id", "omitted_donor", "execution_status",
+    "design_reason_code", "target_estimable")])
+mixed_summary <- as.data.frame(scDonorAudit::summarizeInfluence(mixed_result))
+knitr::kable(subset(mixed_summary, gene_id == "g1", select = c(cell_type,
+    gene_id, n_planned, n_effect_valid, complete_effect_coverage, max_abs_delta_observed)),
+    digits = 3)
+scDonorAudit::plotInfluence(mixed_result, "influence", cell_type = "T",
+    gene_id = c("g1", "g2", "g3"))
+```
+
+For `T`, eight omissions are planned but only seven can supply effects;
+for `B`, seven are planned and six can supply effects. The missing `d8/B`
+combination was never eligible for that cell type's deletion plan. Omitting
+`d1` remains in each plan and appears as unavailable in the plot. The observed
+maximum is conditional on the valid deletions and is not evidence that the
+unavailable deletion would have had zero change. Backend failures use
+`execution_status="failed"`, `reason_code="BACKEND_ERROR"` and an error event;
+the same planned-denominator and missing-effect rules apply.
 
 ## Reproduce a real single-nucleus example
 
@@ -219,34 +294,29 @@ source's CC BY 4.0 license.
 
 ```{r real-data}
 count_file <- system.file("extdata", "crowell19_astrocyte_counts.csv",
-                          package = "scDonorAudit")
+    package = "scDonorAudit")
 sample_file <- system.file("extdata", "crowell19_astrocyte_samples.csv",
-                           package = "scDonorAudit")
-real_counts <- as.matrix(utils::read.csv(count_file, row.names = 1,
-    check.names = FALSE))
+    package = "scDonorAudit")
+real_counts <- as.matrix(utils::read.csv(count_file, row.names = 1, check.names = FALSE))
 real_samples <- utils::read.csv(sample_file)
-real_source <- SummarizedExperiment::SummarizedExperiment(
-    assays = list(counts = real_counts),
+real_source <- SummarizedExperiment::SummarizedExperiment(assays = list(counts = real_counts),
     colData = S4Vectors::DataFrame(real_samples))
 real_registry <- real_samples[, c("sample_id", "donor_id", "condition")]
-real_pb <- scDonorAudit::preparePseudobulk(real_source, "sample_id",
-    "donor_id", "condition", "cell_type", sample_table = real_registry,
-    n_cells = "n_cells")
+real_pb <- scDonorAudit::preparePseudobulk(real_source, "sample_id", "donor_id",
+    "condition", "cell_type", sample_table = real_registry, n_cells = "n_cells")
 real_contrast <- c(numerator = "LPS", denominator = "Vehicle")
-real_audit <- scDonorAudit::auditDesign(real_pb, "independent",
-    real_contrast, min_cells = 20L)
+real_audit <- scDonorAudit::auditDesign(real_pb, "independent", real_contrast,
+    min_cells = 20L)
 as.data.frame(real_audit[["spec"]])
-knitr::kable(as.data.frame(real_audit[["sample_membership"]])[, c(
-    "sample_id", "donor_id", "condition", "n_cells", "in_baseline")])
+knitr::kable(as.data.frame(real_audit[["sample_membership"]])[, c("sample_id",
+    "donor_id", "condition", "n_cells", "in_baseline")])
 real_result <- scDonorAudit::assessDonorInfluence(real_pb, "independent",
     real_contrast, min_cells = 20L)
 table(as.data.frame(real_result[["fits"]])$execution_status)
-knitr::kable(as.data.frame(real_result[["fits"]])[, c(
-    "run_id", "omitted_donor", "execution_status",
-    "design_reason_code", "reason_code")])
-head(as.data.frame(scDonorAudit::summarizeInfluence(real_result))[,
-    c("gene_id", "n_planned", "n_effect_valid",
-      "max_abs_delta_observed")])
+knitr::kable(as.data.frame(real_result[["fits"]])[, c("run_id", "omitted_donor",
+    "execution_status", "design_reason_code", "reason_code")])
+head(as.data.frame(scDonorAudit::summarizeInfluence(real_result))[, c("gene_id",
+    "n_planned", "n_effect_valid", "max_abs_delta_observed")])
 ```
 
 This example demonstrates the data and audit workflow. Eight mice offer
@@ -267,23 +337,21 @@ a biological gene-selection procedure.
 
 ```{r real-interpretation-selection}
 real_summary <- as.data.frame(scDonorAudit::summarizeInfluence(real_result))
-candidates <- real_summary[
-    real_summary$complete_effect_coverage &
-    is.finite(real_summary$baseline_logFC) &
-    abs(real_summary$baseline_logFC) >= 1 &
-    is.finite(real_summary$max_abs_delta_observed), ]
-candidates <- candidates[order(candidates$max_abs_delta_observed,
-                               candidates$gene_id), ]
+candidates <- real_summary[real_summary$complete_effect_coverage & is.finite(real_summary$baseline_logFC) &
+    abs(real_summary$baseline_logFC) >= 1 & is.finite(real_summary$max_abs_delta_observed),
+    ]
+candidates <- candidates[order(candidates$max_abs_delta_observed, candidates$gene_id),
+    ]
 if (nrow(candidates) < 2L) {
     stop("The Crowell19 example requires at least two genes to illustrate ",
-         "different levels of donor-deletion sensitivity; the stated ",
-         "selection rule returned ", nrow(candidates), ".")
+        "different levels of donor-deletion sensitivity; the stated ",
+        "selection rule returned ", nrow(candidates), ".")
 }
-chosen <- candidates[c(ceiling(0.1 * nrow(candidates)),
-                       ceiling(0.9 * nrow(candidates))), ]
+chosen <- candidates[c(ceiling(0.1 * nrow(candidates)), ceiling(0.9 * nrow(candidates))),
+    ]
 chosen$illustration <- c("lower change", "higher change")
-knitr::kable(chosen[, c("illustration", "gene_id", "baseline_logFC",
-    "n_planned", "n_effect_valid", "max_abs_delta_observed")], digits = 3)
+knitr::kable(chosen[, c("illustration", "gene_id", "baseline_logFC", "n_planned",
+    "n_effect_valid", "max_abs_delta_observed")], digits = 3)
 ```
 
 For the higher-change example, inspect every deletion instead of relying on
@@ -294,12 +362,12 @@ reduce `n_effect_valid`; it must not be interpreted as zero change.
 real_se <- real_result[["results"]][[chosen$cell_type[2L]]]
 gene_row <- match(chosen$gene_id[2L], rownames(real_se))
 refits <- as.data.frame(SummarizedExperiment::colData(real_se))
-refits$logFC <- as.numeric(SummarizedExperiment::assay(real_se,
-    "logFC")[gene_row, ])
+refits$logFC <- as.numeric(SummarizedExperiment::assay(real_se, "logFC")[gene_row,
+    ])
 refits$change_from_full <- refits$logFC - refits$logFC[1L]
 largest <- which.max(abs(refits$change_from_full[-1L])) + 1L
-knitr::kable(refits[, c("run_id", "omitted_donor", "logFC",
-                         "change_from_full")], digits = 3)
+knitr::kable(refits[, c("run_id", "omitted_donor", "logFC", "change_from_full")],
+    digits = 3)
 ```
 
 In this dataset, `r nrow(candidates)` genes meet the stated selection rule.
@@ -317,6 +385,24 @@ describe how sensitive the specified model is to donor omission in this
 dataset. They do not show that any mouse is erroneous, that a gene is robust
 in another dataset, or that the selected genes are representative of all
 genes.
+
+## Method and data references
+
+- Chen Y, Chen L, Lun ATL, Baldoni PL, Smyth GK (2025). edgeR v4: powerful
+  differential analysis of sequencing data with expanded functionality and
+  improved support for small counts and larger datasets.
+  *Nucleic Acids Research* 53(2), gkaf018.
+  [doi:10.1093/nar/gkaf018](https://doi.org/10.1093/nar/gkaf018).
+- Crowell HL et al. (2020). muscat detects subpopulation-specific state
+  transitions from multi-sample multi-condition single-cell transcriptomics
+  data. *Nature Communications* 11, 6077.
+  [doi:10.1038/s41467-020-19894-4](https://doi.org/10.1038/s41467-020-19894-4).
+  Dataset attribution and transformations are in `extdata/README-crowell19.md`.
+
+Use `citation("edgeR")` for citations matching the installed backend version
+and `citation("scDonorAudit")` for the package citation. A separate methods
+paper is not claimed. The help-example data are synthetic; their generation
+is documented in `extdata/README-example.md`.
 
 ## Session information
 

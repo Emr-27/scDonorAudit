@@ -9,12 +9,12 @@ plotInfluence(result, type, cell_type = NULL, gene_id = NULL)
 \arguments{
 \item{result}{Output of \code{\link[=assessDonorInfluence]{assessDonorInfluence()}}.}
 
-\item{type}{One of \code{"coverage"}, \code{"influence"}, or \code{"effect"}.}
+\item{type}{One of \code{'coverage'}, \code{'influence'}, or \code{'effect'}.}
 
 \item{cell_type}{Required for gene-level plots.}
 
-\item{gene_id}{Explicit gene IDs; a nonempty vector for \code{"influence"}
-and one ID for \code{"effect"}.}
+\item{gene_id}{Explicit gene IDs; a nonempty vector for \code{'influence'}
+and one ID for \code{'effect'}.}
 }
 \value{
 A \code{ggplot} object.
@@ -27,24 +27,25 @@ Grey influence tiles mark unavailable effects, which may arise
 from design, backend, or gene-level status. Inspect \code{fits} and the gene
 status assay for the specific reason.
 Effect plots use unique run IDs for positions and label deletions as
-\verb{omit: <donor ID>}. Unavailable effects retain their position without a point.
+\verb{omit: <donor ID>}. Unavailable effects retain their position without
+a point.
 Coverage plots use unique sample IDs for positions and display donor/sample
 labels separately, so identical labels cannot merge different samples.
 }
 \examples{
-count_file <- system.file("extdata", "example_counts.csv",
-                          package = "scDonorAudit")
-sample_file <- system.file("extdata", "example_samples.csv",
-                           package = "scDonorAudit")
+count_file <- system.file('extdata', 'example_counts.csv',
+                          package = 'scDonorAudit')
+sample_file <- system.file('extdata', 'example_samples.csv',
+                           package = 'scDonorAudit')
 counts <- as.matrix(utils::read.csv(count_file, row.names = 1,
                                     check.names = FALSE))
 samples <- utils::read.csv(sample_file)
 se <- SummarizedExperiment::SummarizedExperiment(
     assays = list(counts = counts),
-    colData = S4Vectors::DataFrame(samples, cell_type = "T"))
-pb <- preparePseudobulk(se, "sample_id", "donor_id", "condition",
-                        "cell_type", sample_table = samples)
-result <- assessDonorInfluence(pb, "independent",
-                               c(numerator = "stim", denominator = "ctrl"))
-plotInfluence(result, "effect", cell_type = "T", gene_id = "g1")
+    colData = S4Vectors::DataFrame(samples, cell_type = 'T'))
+pb <- preparePseudobulk(se, 'sample_id', 'donor_id', 'condition',
+                        'cell_type', sample_table = samples)
+result <- assessDonorInfluence(pb, 'independent',
+                               c(numerator = 'stim', denominator = 'ctrl'))
+plotInfluence(result, 'effect', cell_type = 'T', gene_id = 'g1')
 }
