@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  PACKAGE_SHA: ab5d3b67cc63d44c5312204cc515427318daf329
+  PACKAGE_SHA: ca5d67bcfa3785a38fbe64444f6a4b686a01ccc8
 
 jobs:
   package-check:
@@ -30,6 +30,8 @@ jobs:
           r-version: release
           use-public-rspm: true
       - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-tinytex@v2
+        if: runner.os == 'Linux'
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           working-directory: package
@@ -49,7 +51,7 @@ jobs:
         run: |
           set -euo pipefail
           R CMD build . 2>&1 | tee build.log
-          Rscript -e 'p <- Sys.glob("scDonorAudit_*.tar.gz"); stopifnot(length(p) == 1L); rcmdcheck::rcmdcheck(p, args="--no-manual", error_on="warning", check_dir="check")' 2>&1 | tee check.log
+          Rscript -e 'p <- Sys.glob("scDonorAudit_*.tar.gz"); stopifnot(length(p) == 1L); a <- "--no-build-vignettes"; if (Sys.getenv("RUNNER_OS") != "Linux") a <- c(a, "--no-manual"); rcmdcheck::rcmdcheck(p, args=a, error_on="warning", check_dir="check")' 2>&1 | tee check.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
