@@ -37,8 +37,12 @@
 #' see `extdata/README-crowell19.md`. Method and data citations are in the
 #' vignette. For edgeR use [edgeR::edgeR] and `citation('edgeR')`.
 #'
-#' @seealso [preparePseudobulk()], [auditDesign()], [assessDonorInfluence()],
-#'   [summarizeInfluence()], [plotInfluence()]
+#' @seealso
+#' - [preparePseudobulk()]
+#' - [auditDesign()]
+#' - [assessDonorInfluence()]
+#' - [summarizeInfluence()]
+#' - [plotInfluence()]
 #' @name scDonorAudit
 #' @aliases scDonorAudit-package
 "_PACKAGE"

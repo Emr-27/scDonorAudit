@@ -41,8 +41,8 @@ metadata.
 \description{
 Aggregates an in-memory \code{SingleCellExperiment} by sample and cell type, or
 checks an already aggregated \code{SummarizedExperiment}. Missing sample/cell-type
-combinations are recorded in \code{metadata(pb)$scdonoraudit$coverage}, not
-inserted as zero-expression columns. A sample registry is needed to see
+combinations are recorded in the preparation metadata's \code{coverage} table,
+rather than inserted as zero-expression columns. A sample registry shows
 samples that are entirely absent from the input object.
 }
 \details{

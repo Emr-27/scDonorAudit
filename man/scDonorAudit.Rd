@@ -52,8 +52,13 @@ vignette. For edgeR use \link[edgeR:edgeR]{edgeR::edgeR} and \code{citation('edg
 }
 
 \seealso{
-\code{\link[=preparePseudobulk]{preparePseudobulk()}}, \code{\link[=auditDesign]{auditDesign()}}, \code{\link[=assessDonorInfluence]{assessDonorInfluence()}},
-\code{\link[=summarizeInfluence]{summarizeInfluence()}}, \code{\link[=plotInfluence]{plotInfluence()}}
+\itemize{
+\item \code{\link[=preparePseudobulk]{preparePseudobulk()}}
+\item \code{\link[=auditDesign]{auditDesign()}}
+\item \code{\link[=assessDonorInfluence]{assessDonorInfluence()}}
+\item \code{\link[=summarizeInfluence]{summarizeInfluence()}}
+\item \code{\link[=plotInfluence]{plotInfluence()}}
+}
 }
 \author{
 \strong{Maintainer}: Fuhao Jiang \email{emr39515@gmail.com} (\href{https://orcid.org/0009-0009-8836-8494}{ORCID})
