@@ -1,5 +1,3 @@
-# Assisted-by: OpenAI Codex; see inst/CODE_PROVENANCE.md.
-
 storage_counts <- function(value = 24) {
     counts <- outer(seq_len(8), seq_len(8), function(i, j) 10 + 2 * i + j)
     counts[(row(counts) + col(counts)) %% 3L == 0L] <- 0

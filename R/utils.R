@@ -1,6 +1,3 @@
-# Assisted-by: OpenAI Codex and DeepSeek V4.1 Flash.
-# See inst/CODE_PROVENANCE.md for scope and maintenance responsibility.
-
 .scd_stop <- function(code, detail) {
     stop(sprintf("[%s] %s", code, detail), call. = FALSE)
 }

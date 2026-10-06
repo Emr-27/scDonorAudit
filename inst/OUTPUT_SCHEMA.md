@@ -1,7 +1,6 @@
 # Output dictionary
 
-The five public functions and their argument lists are unchanged. Preparation
-metadata uses schema `0.2`; fitted results use schema `0.3`. Tables are
+Preparation metadata uses schema `0.2`; fitted results use schema `0.3`. Tables are
 S4Vectors `DataFrame`s unless stated otherwise. Missing values are `NA`, never
 zero-filled. IDs are strings, counts are integers unless noted below.
 

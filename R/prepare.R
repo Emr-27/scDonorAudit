@@ -1,5 +1,3 @@
-## Assisted-by: OpenAI Codex; see inst/CODE_PROVENANCE.md.
-
 #' Prepare donor-aware pseudobulk counts
 #'
 #' Sums raw counts from an in-memory `SingleCellExperiment` by gene, sample

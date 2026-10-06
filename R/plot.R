@@ -1,5 +1,3 @@
-# Assisted-by: OpenAI Codex; see inst/CODE_PROVENANCE.md.
-
 .scd_plot_theme <- function() {
     ggplot2::theme_minimal() + ggplot2::theme(plot.background =
         ggplot2::element_rect(fill = "white",
@@ -15,14 +13,22 @@
 #' @param gene_id Explicit gene IDs; a nonempty vector for `'influence'`
 #'   and one ID for `'effect'`.
 #' @return A `ggplot` object.
-#' @details Grey influence tiles mark unavailable effects, which may arise
-#'   from design, backend, or gene-level status. Inspect `fits` and the gene
-#'   status assay for the specific reason.
-#'   Effect plots use unique run IDs for positions and label deletions as
+#' @details Coverage plots show baseline inclusion for each registered
+#'   sample/cell-type combination. Included samples have status `included`;
+#'   excluded samples show their membership reason, such as missing coverage,
+#'   insufficient cells or a pairing-policy exclusion. Unique sample IDs
+#'   determine positions, with donor/sample labels displayed separately.
+#'
+#'   Influence tiles show the signed change in log2 fold-change:
+#'   deletion effect minus baseline effect. Grey tiles mark unavailable
+#'   comparisons, which may arise from design, backend, or gene-level status.
+#'   Inspect `fits` and the gene status assay for the specific reason.
+#'
+#'   Effect plots show baseline and deletion log2 fold-changes; the dashed
+#'   horizontal line marks the baseline effect. They use unique run IDs for
+#'   positions and label deletions as
 #'   `omit: <donor ID>`. Unavailable effects retain their position without
 #'   a point.
-#'   Coverage plots use unique sample IDs for positions and display donor/sample
-#'   labels separately, so identical labels cannot merge different samples.
 #' @importFrom rlang .data
 #' @examples
 #' count_file <- system.file('extdata', 'example_counts.csv',

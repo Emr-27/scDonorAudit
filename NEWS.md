@@ -1,3 +1,10 @@
+# scDonorAudit 0.99.8
+
+- Document fixed backend settings, filtering defaults, design-audit components
+  and the quantities shown by each plot.
+- Add a small single-cell aggregation example and clarify example-data metadata.
+- Centralize development provenance with a package-level source pointer.
+
 # scDonorAudit 0.99.7
 
 - Organize the README around installation, a minimal workflow and result

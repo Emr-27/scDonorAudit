@@ -1,4 +1,5 @@
-## Assisted-by: OpenAI Codex; see inst/CODE_PROVENANCE.md.
+# Development provenance for implementation, tests and documentation
+# is recorded in inst/CODE_PROVENANCE.md.
 
 #' Audit donor omission in two-condition pseudobulk analyses
 #'
@@ -53,7 +54,6 @@
 #'
 #' @section Data and methods:
 #' Help examples use synthetic negative-binomial counts (seed 1103).
-#'
 #' Preparation details are in `extdata/README-example.md`.
 #'
 #' The generation script is `scripts/create_synthetic_example.R`.
@@ -61,7 +61,6 @@
 #' The vignette also uses attributed Crowell19 Astrocyte pseudobulk counts.
 #'
 #' Data notes are in `extdata/README-crowell19.md`.
-#'
 #' Method and data citations are in the vignette. For edgeR use
 #' [edgeR::edgeR] and `citation('edgeR')`.
 #'

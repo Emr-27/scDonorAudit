@@ -1,5 +1,3 @@
-## Assisted-by: OpenAI Codex; see inst/CODE_PROVENANCE.md.
-
 .scd_validate_registry <- function(registry, options) {
     observed_conditions <- sort(unique(registry$condition), method = "radix")
     expected <- sort(unname(options$contrast), method = "radix")
@@ -294,7 +292,10 @@
 #' @param contrast Named character vector such as
 #'   `c(numerator='stim', denominator='ctrl')`. The sample registry must contain
 #'   exactly these two conditions.
-#' @param min_cells Optional minimum cell count per sample/cell type.
+#' @param min_cells Optional minimum cell count per sample/cell type. The
+#'   default `NULL` applies no cell-count threshold. A positive integer
+#'   requires known `n_cells` for every observed pseudobulk and excludes
+#'   samples below the threshold before applying the pairing policy.
 #' @param covariates Names of sample-level covariates retained during
 #'   preparation.
 #'   Names must be syntactic R names other than `.` and must not be
@@ -303,7 +304,12 @@
 #'   pair; `'complete_pairs'` drops both samples of that donor from that cell
 #'   type's baseline analysis. This handles cell-type eligibility, not an
 #'   incomplete pair in the sample registry; see [auditDesign()] for details.
-#' @param min_replicates_warn Threshold for a descriptive low-replication flag.
+#' @param min_replicates_warn Positive integer threshold (default 3) for
+#'   `low_replication`, computed for the baseline and each omission. The count
+#'   is the smaller per-condition donor count for an independent design or
+#'   the number of remaining complete pairs for a paired design. Counts below
+#'   the threshold set the flag; a cell type blocked by the strict pairing
+#'   policy has `NA`. This advisory flag leaves design eligibility unchanged.
 #' @details Only two-condition independent or paired designs are supported.
 #'   Additional repeated measurements or multiple samples per donor and
 #'   condition are unsupported. For a paired design, every donor must have
@@ -317,7 +323,18 @@
 #'   the donor from its baseline cohort. Thus `'complete_pairs'` can handle a
 #'   missing cell-type pseudobulk or a sample below the cell-count threshold,
 #'   but cannot repair an incomplete sample registry.
-#' @return A `SimpleList` of `DataFrame` tables and resolved settings.
+#' @return A `SimpleList` with these components:
+#'   * `spec`: per-cell-type cohort sizes, plan status and planned omissions.
+#'   * `sample_membership`: registered sample/cell-type combinations, baseline
+#'     inclusion decisions and their reasons.
+#'   * `runs`: baseline and deletion design checks, including rank, residual
+#'     degrees of freedom, target estimability and low-replication flags.
+#'   * `issues`: the subset of design run rows with non-OK reason codes.
+#'   * `config`: resolved design, contrast, covariates and thresholds.
+#'   * `provenance`: the preparation's audit universe.
+#'
+#'   The full field/type/status dictionary is installed at
+#'   `system.file('OUTPUT_SCHEMA.md', package = 'scDonorAudit')`.
 #' @examples
 #' count_file <- system.file('extdata', 'example_counts.csv',
 #'                           package = 'scDonorAudit')

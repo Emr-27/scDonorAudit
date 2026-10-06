@@ -12,9 +12,6 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-<!-- Assisted-by: OpenAI Codex; see inst/CODE_PROVENANCE.md
-in the source package. -->
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 4)
 ```
@@ -58,6 +55,36 @@ if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocMana
 BiocManager::install("scDonorAudit")
 library(scDonorAudit)
 ```
+
+## Aggregate single-cell counts
+
+This small example shows how cell counts become pseudobulk counts and how
+the sample registry records missing combinations. Two cells from `s1` are
+summed into its `T`-cell column; registered sample `s3` has no observed cells.
+
+```{r single-cell-aggregation}
+sce_counts <- matrix(c(1L, 4L, 2L, 5L, 3L, 6L, 4L, 7L), nrow = 2L,
+    dimnames = list(c("g1", "g2"), paste0("cell", 1:4)))
+sce_cells <- S4Vectors::DataFrame(
+    sample_id = c("s1", "s1", "s2", "s2"),
+    cell_type = c("T", "T", "T", "B"))
+sce_registry <- data.frame(sample_id = c("s1", "s2", "s3"),
+    donor_id = c("d1", "d2", "d3"),
+    condition = c("ctrl", "stim", "ctrl"))
+sce_input <- SingleCellExperiment::SingleCellExperiment(
+    assays = list(counts = sce_counts), colData = sce_cells)
+cell_pb <- scDonorAudit::preparePseudobulk(sce_input, "sample_id", "donor_id",
+    "condition", "cell_type", sample_table = sce_registry)
+SummarizedExperiment::assay(cell_pb, "counts")
+knitr::kable(as.data.frame(SummarizedExperiment::colData(cell_pb))[
+    , c("sample_id", "cell_type", "n_cells")])
+knitr::kable(S4Vectors::metadata(cell_pb)$scdonoraudit$coverage)
+```
+
+The three pseudobulk columns correspond to the observed sample/cell-type
+combinations. The coverage table has six rows: registered samples crossed
+with `B` and `T`. Missing combinations have `observed = FALSE` and
+`n_cells = NA`, with no extra count columns.
 
 ## Construct an auditable example
 

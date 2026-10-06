@@ -31,7 +31,10 @@ each donor.}
 \code{c(numerator='stim', denominator='ctrl')}. The sample registry must contain
 exactly these two conditions.}
 
-\item{min_cells}{Optional minimum cell count per sample/cell type.}
+\item{min_cells}{Optional minimum cell count per sample/cell type. The
+default \code{NULL} applies no cell-count threshold. A positive integer
+requires known \code{n_cells} for every observed pseudobulk and excludes
+samples below the threshold before applying the pairing policy.}
 
 \item{covariates}{Names of sample-level covariates retained during
 preparation.
@@ -43,18 +46,39 @@ pair; \code{'complete_pairs'} drops both samples of that donor from that cell
 type's baseline analysis. This handles cell-type eligibility, not an
 incomplete pair in the sample registry; see \code{\link[=auditDesign]{auditDesign()}} for details.}
 
-\item{min_replicates_warn}{Threshold for a descriptive low-replication flag.}
+\item{min_replicates_warn}{Positive integer threshold (default 3) for
+\code{low_replication}, computed for the baseline and each omission. The count
+is the smaller per-condition donor count for an independent design or
+the number of remaining complete pairs for a paired design. Counts below
+the threshold set the flag; a cell type blocked by the strict pairing
+policy has \code{NA}. This advisory flag leaves design eligibility unchanged.}
 
-\item{filter_args}{Named list of \code{filterByExpr} options: \code{min.count},
-\code{min.total.count}, \code{large.n}, and \code{min.prop}.}
+\item{filter_args}{Named list of \code{filterByExpr} options. The default empty
+list resolves to \code{min.count = 10}, \code{min.total.count = 15}, \code{large.n = 10}
+and \code{min.prop = 0.7}; supplied entries override these values. Filtering
+uses baseline raw counts grouped by condition within each cell type.
+Retained genes form the fixed family for all its deletion refits.}
 
-\item{backend_args}{Named list with \code{robust}. Other backend options,
-including \code{prior.count}, use the defaults of the installed edgeR version.}
+\item{backend_args}{Named list whose supported entry is the logical
+\code{robust} argument to \code{glmQLFit}, defaulting to \code{TRUE}.}
 }
 \value{
-A \code{SimpleList} containing per-cell-type results, fit ledger,
-sample membership, gene filter, coverage, issues, configuration, and
-provenance. In \code{fits}, \code{design_reason_code} preserves the pre-fit design
+A \code{SimpleList} with these components:
+\itemize{
+\item \code{results}: per-cell-type gene-by-run effects, tests and validity flags.
+\item \code{fits}: baseline and deletion execution ledger.
+\item \code{fit_samples}: sample IDs, library sizes and normalization factors for
+completed fits.
+\item \code{spec}: per-cell-type plan status and planned omission counts.
+\item \code{sample_membership}: baseline inclusion decisions and reasons.
+\item \code{gene_filter}: the fixed baseline gene family and filtering decisions.
+\item \code{coverage}: registered sample/cell-type coverage from preparation.
+\item \code{issues}: design problems, backend warnings and errors.
+\item \code{config}: resolved analysis settings.
+\item \code{provenance}: preparation, package, R and edgeR versions and contrast.
+}
+
+In \code{fits}, \code{design_reason_code} preserves the pre-fit design
 audit even when \code{reason_code} later reports baseline or backend failure.
 \code{fit_samples} records the sample ID, library size, and normalization
 factor for every sample in each completed run.
@@ -63,6 +87,13 @@ factor for every sample in each completed run.
 Fits an edgeR quasi-likelihood model to a fixed baseline gene family in
 each cell type, then removes one donor at a time and refits. This is a
 sensitivity analysis, not an automatic rule for excluding donors.
+}
+\details{
+Each fit uses TMM normalization and calls \code{edgeR::glmQLFit} with
+\code{dispersion = NULL}, \code{abundance.trend = TRUE}, \code{legacy = FALSE} and
+\code{top.proportion = NULL}. These settings are fixed by the package.
+Arguments not explicitly supplied to edgeR, including \code{prior.count}, use
+the defaults of the installed edgeR version.
 }
 \examples{
 count_file <- system.file('extdata', 'example_counts.csv',

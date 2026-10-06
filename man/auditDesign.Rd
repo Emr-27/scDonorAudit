@@ -29,7 +29,10 @@ each donor.}
 \code{c(numerator='stim', denominator='ctrl')}. The sample registry must contain
 exactly these two conditions.}
 
-\item{min_cells}{Optional minimum cell count per sample/cell type.}
+\item{min_cells}{Optional minimum cell count per sample/cell type. The
+default \code{NULL} applies no cell-count threshold. A positive integer
+requires known \code{n_cells} for every observed pseudobulk and excludes
+samples below the threshold before applying the pairing policy.}
 
 \item{covariates}{Names of sample-level covariates retained during
 preparation.
@@ -41,10 +44,28 @@ pair; \code{'complete_pairs'} drops both samples of that donor from that cell
 type's baseline analysis. This handles cell-type eligibility, not an
 incomplete pair in the sample registry; see \code{\link[=auditDesign]{auditDesign()}} for details.}
 
-\item{min_replicates_warn}{Threshold for a descriptive low-replication flag.}
+\item{min_replicates_warn}{Positive integer threshold (default 3) for
+\code{low_replication}, computed for the baseline and each omission. The count
+is the smaller per-condition donor count for an independent design or
+the number of remaining complete pairs for a paired design. Counts below
+the threshold set the flag; a cell type blocked by the strict pairing
+policy has \code{NA}. This advisory flag leaves design eligibility unchanged.}
 }
 \value{
-A \code{SimpleList} of \code{DataFrame} tables and resolved settings.
+A \code{SimpleList} with these components:
+\itemize{
+\item \code{spec}: per-cell-type cohort sizes, plan status and planned omissions.
+\item \code{sample_membership}: registered sample/cell-type combinations, baseline
+inclusion decisions and their reasons.
+\item \code{runs}: baseline and deletion design checks, including rank, residual
+degrees of freedom, target estimability and low-replication flags.
+\item \code{issues}: the subset of design run rows with non-OK reason codes.
+\item \code{config}: resolved design, contrast, covariates and thresholds.
+\item \code{provenance}: the preparation's audit universe.
+}
+
+The full field/type/status dictionary is installed at
+\code{system.file('OUTPUT_SCHEMA.md', package = 'scDonorAudit')}.
 }
 \description{
 Reports which samples enter each cell type's analysis and whether a model

@@ -1,7 +1,5 @@
 #!/usr/bin/env Rscript
 
-# Assisted-by: OpenAI Codex; see inst/CODE_PROVENANCE.md.
-
 # Rebuild the small, synthetic files used by the package help examples.
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) != 1L) stop("supply an output directory")

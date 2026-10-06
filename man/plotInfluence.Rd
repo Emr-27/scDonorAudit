@@ -23,14 +23,22 @@ A \code{ggplot} object.
 Plot donor coverage or gene-level influence
 }
 \details{
-Grey influence tiles mark unavailable effects, which may arise
-from design, backend, or gene-level status. Inspect \code{fits} and the gene
-status assay for the specific reason.
-Effect plots use unique run IDs for positions and label deletions as
+Coverage plots show baseline inclusion for each registered
+sample/cell-type combination. Included samples have status \code{included};
+excluded samples show their membership reason, such as missing coverage,
+insufficient cells or a pairing-policy exclusion. Unique sample IDs
+determine positions, with donor/sample labels displayed separately.
+
+Influence tiles show the signed change in log2 fold-change:
+deletion effect minus baseline effect. Grey tiles mark unavailable
+comparisons, which may arise from design, backend, or gene-level status.
+Inspect \code{fits} and the gene status assay for the specific reason.
+
+Effect plots show baseline and deletion log2 fold-changes; the dashed
+horizontal line marks the baseline effect. They use unique run IDs for
+positions and label deletions as
 \verb{omit: <donor ID>}. Unavailable effects retain their position without
 a point.
-Coverage plots use unique sample IDs for positions and display donor/sample
-labels separately, so identical labels cannot merge different samples.
 }
 \examples{
 count_file <- system.file('extdata', 'example_counts.csv',

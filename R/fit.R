@@ -1,5 +1,3 @@
-# Assisted-by: OpenAI Codex; see inst/CODE_PROVENANCE.md.
-
 .scd_fit_settings <- function(filter_args, backend_args) {
     defaults <- list(min.count = 10, min.total.count = 15, large.n = 10,
         min.prop = 0.7)
@@ -318,13 +316,32 @@
 #' sensitivity analysis, not an automatic rule for excluding donors.
 #'
 #' @inheritParams auditDesign
-#' @param filter_args Named list of `filterByExpr` options: `min.count`,
-#'   `min.total.count`, `large.n`, and `min.prop`.
-#' @param backend_args Named list with `robust`. Other backend options,
-#'   including `prior.count`, use the defaults of the installed edgeR version.
-#' @return A `SimpleList` containing per-cell-type results, fit ledger,
-#'   sample membership, gene filter, coverage, issues, configuration, and
-#'   provenance. In `fits`, `design_reason_code` preserves the pre-fit design
+#' @param filter_args Named list of `filterByExpr` options. The default empty
+#'   list resolves to `min.count = 10`, `min.total.count = 15`, `large.n = 10`
+#'   and `min.prop = 0.7`; supplied entries override these values. Filtering
+#'   uses baseline raw counts grouped by condition within each cell type.
+#'   Retained genes form the fixed family for all its deletion refits.
+#' @param backend_args Named list whose supported entry is the logical
+#'   `robust` argument to `glmQLFit`, defaulting to `TRUE`.
+#' @details Each fit uses TMM normalization and calls `edgeR::glmQLFit` with
+#'   `dispersion = NULL`, `abundance.trend = TRUE`, `legacy = FALSE` and
+#'   `top.proportion = NULL`. These settings are fixed by the package.
+#'   Arguments not explicitly supplied to edgeR, including `prior.count`, use
+#'   the defaults of the installed edgeR version.
+#' @return A `SimpleList` with these components:
+#'   * `results`: per-cell-type gene-by-run effects, tests and validity flags.
+#'   * `fits`: baseline and deletion execution ledger.
+#'   * `fit_samples`: sample IDs, library sizes and normalization factors for
+#'     completed fits.
+#'   * `spec`: per-cell-type plan status and planned omission counts.
+#'   * `sample_membership`: baseline inclusion decisions and reasons.
+#'   * `gene_filter`: the fixed baseline gene family and filtering decisions.
+#'   * `coverage`: registered sample/cell-type coverage from preparation.
+#'   * `issues`: design problems, backend warnings and errors.
+#'   * `config`: resolved analysis settings.
+#'   * `provenance`: preparation, package, R and edgeR versions and contrast.
+#'
+#'   In `fits`, `design_reason_code` preserves the pre-fit design
 #'   audit even when `reason_code` later reports baseline or backend failure.
 #'   `fit_samples` records the sample ID, library size, and normalization
 #'   factor for every sample in each completed run.

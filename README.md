@@ -7,13 +7,16 @@ omissions to design checks, fit outcomes, and gene-effect changes.
 The implemented entry points are `preparePseudobulk()`, `auditDesign()`,
 `assessDonorInfluence()`, `summarizeInfluence()` and `plotInfluence()`.
 
-See `?scDonorAudit`, the runnable vignette and the installed
+See `?scDonorAudit`, the [runnable vignette](vignettes/scDonorAudit.Rmd) and the installed
 [output dictionary](inst/OUTPUT_SCHEMA.md) for fields, types and statuses.
+After installation, open the evaluated tutorial with
+`vignette("scDonorAudit", package = "scDonorAudit")`.
 
 ## Installation
 
-The package is currently available from its source repository. From the
-package directory, with the dependencies in `DESCRIPTION` installed, run:
+The package is currently available from its source repository. Download or
+clone this repository, then start R in the directory containing `DESCRIPTION`.
+With the dependencies in that file installed, run:
 
 ```r
 install.packages(".", repos = NULL, type = "source")
@@ -108,6 +111,3 @@ donor omissions, their execution outcomes, and the observed effect changes.
 | Model fitting | edgeR | Linked design/execution ledger and per-run sample records |
 | Error reporting | dreamlet assay/gene errors | Original design reasons plus warnings and backend errors |
 | Interpretation | Custom DE diagnostics | Observed change alongside planned/valid coverage |
-
-AI assistance was used to develop code and documentation. The
-[development provenance](inst/CODE_PROVENANCE.md) records its scope.

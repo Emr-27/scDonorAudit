@@ -1,6 +1,3 @@
-# Assisted-by: OpenAI Codex and DeepSeek V4.1 Flash.
-# See inst/CODE_PROVENANCE.md for scope and maintenance responsibility.
-
 #' Summarize observed donor influence on each gene
 #'
 #' Summaries combine observed effect changes with the coverage of valid
