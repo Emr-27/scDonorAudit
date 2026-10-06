@@ -9,7 +9,7 @@ The implemented entry points are `preparePseudobulk()`, `auditDesign()`,
 
 See `?scDonorAudit`, the [runnable vignette](vignettes/scDonorAudit.Rmd) and the installed
 [output dictionary](inst/OUTPUT_SCHEMA.md) for fields, types and statuses.
-After installation, open the evaluated tutorial with
+From an installation of a built source archive, open the evaluated tutorial with
 `vignette("scDonorAudit", package = "scDonorAudit")`.
 
 ## Installation
