@@ -13,9 +13,11 @@ summarizeInfluence(result, effect_threshold = NULL)
 for a material sign reversal.}
 }
 \value{
-A \code{DataFrame} with one row per retained gene and cell type. If there
-are no retained genes, the result has zero rows and the same 16 typed
-columns, including a \code{CharacterList} for \code{max_influence_donors}.
+A \code{DataFrame} with one row per retained gene and cell type.
+With no retained genes, the result has zero rows and the same 16 typed
+columns.
+
+The \code{max_influence_donors} column is a \code{CharacterList}.
 See \link{scDonorAudit} and the installed \code{OUTPUT_SCHEMA.md} for field meanings.
 }
 \description{

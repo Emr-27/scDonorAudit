@@ -21,10 +21,13 @@ nonempty gene IDs. These requirements and audit metadata consistency are
 rechecked on every call. Valid count edits, row subsets, and column
 reordering are supported.}
 
-\item{design}{Either \code{'independent'} or \code{'paired'}.}
+\item{design}{Either \code{'independent'}, with exactly one registered sample per
+donor, or \code{'paired'}, with exactly one registered sample per condition for
+each donor.}
 
 \item{contrast}{Named character vector such as
-\code{c(numerator='stim', denominator='ctrl')}.}
+\code{c(numerator='stim', denominator='ctrl')}. The sample registry must contain
+exactly these two conditions.}
 
 \item{min_cells}{Optional minimum cell count per sample/cell type.}
 
@@ -35,7 +38,8 @@ Names must be syntactic R names other than \code{.} and must not be
 
 \item{pair_policy}{\code{'strict'} blocks a cell type with an incomplete eligible
 pair; \code{'complete_pairs'} drops both samples of that donor from that cell
-type's baseline analysis.}
+type's baseline analysis. This handles cell-type eligibility, not an
+incomplete pair in the sample registry; see \code{\link[=auditDesign]{auditDesign()}} for details.}
 
 \item{min_replicates_warn}{Threshold for a descriptive low-replication flag.}
 }
@@ -47,6 +51,21 @@ Reports which samples enter each cell type's analysis and whether a model
 can be fit before and after omitting each included donor. Low replication is
 recorded as a reminder; structural model checks determine whether fitting
 can proceed.
+}
+\details{
+Only two-condition independent or paired designs are supported.
+Additional repeated measurements or multiple samples per donor and
+condition are unsupported. For a paired design, every donor must have
+both conditions in the sample registry before cell-type eligibility is
+assessed. A registry with a missing condition for any donor is rejected
+under either \code{pair_policy}.
+
+Within a cell type, an observed sample is eligible if it also meets
+\code{min_cells} when that threshold is set. If only one member of a registered
+pair is eligible, \code{pair_policy} either blocks that cell type or excludes
+the donor from its baseline cohort. Thus \code{'complete_pairs'} can handle a
+missing cell-type pseudobulk or a sample below the cell-count threshold,
+but cannot repair an incomplete sample registry.
 }
 \examples{
 count_file <- system.file('extdata', 'example_counts.csv',

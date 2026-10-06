@@ -49,8 +49,11 @@ package directory, with the dependencies in `DESCRIPTION` installed, run:
 install.packages(".", repos = NULL, type = "source")
 ```
 
-After the package is accepted and released by Bioconductor, the standard
-installation command will be:
+After acceptance and a successful Bioconductor build, the package can be
+installed from the Bioconductor version that contains it: initially devel,
+then the applicable release. Set up the matching R/Bioconductor environment
+using the [Bioconductor installation guide](https://bioconductor.org/install/),
+then run:
 
 ```r
 if (!requireNamespace("BiocManager", quietly = TRUE))

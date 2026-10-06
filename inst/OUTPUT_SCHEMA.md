@@ -1,4 +1,4 @@
-# Output dictionary (0.99.5)
+# Output dictionary
 
 The five public functions and their argument lists are unchanged. Preparation
 metadata uses schema `0.2`; fitted results use schema `0.3`. Tables are

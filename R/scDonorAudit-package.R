@@ -1,3 +1,5 @@
+## Assisted-by: OpenAI Codex; see inst/CODE_PROVENANCE.md.
+
 #' Audit donor omission in two-condition pseudobulk analyses
 #'
 #' scDonorAudit describes how a specified edgeR quasi-likelihood analysis
@@ -12,6 +14,19 @@
 #' [assessDonorInfluence()] fits the baseline and planned donor omissions.
 #' [summarizeInfluence()] reports observed changes and valid-effect coverage.
 #' [plotInfluence()] shows coverage, effects and changes with missingness.
+#'
+#' @section Supported designs:
+#' The sample registry must contain exactly the two contrast conditions.
+#' An independent design requires one registered sample per donor. A paired
+#' design requires one registered sample per condition for every donor.
+#' Additional repeated measurements or multiple samples per donor and
+#' condition are unsupported.
+#'
+#' Paired registry entries must be complete under both pairing policies.
+#' Within a cell type, a missing pseudobulk or a sample below `min_cells` can
+#' leave only one eligible member of a pair. The default `pair_policy='strict'`
+#' blocks that cell type; `'complete_pairs'` excludes that donor from the cell
+#' type's baseline cohort. It does not repair missing pairs in the registry.
 #'
 #' @section Inputs and interoperability:
 #' Inputs use `SingleCellExperiment` or `SummarizedExperiment` and in-memory

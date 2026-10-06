@@ -12,6 +12,9 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
+<!-- Assisted-by: OpenAI Codex; see inst/CODE_PROVENANCE.md
+in the source package. -->
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 4)
 ```
@@ -67,20 +70,17 @@ workflows; these entries describe how this package supplies the audit.
 
 ## Installation
 
-After Bioconductor accepts and releases the package, its standard installation
-command will be:
+For the current source version, follow the installation instructions in the
+[repository README](https://github.com/Emr-27/scDonorAudit#installation).
+
+After acceptance and a successful Bioconductor build, use the command below
+in the matching R/Bioconductor environment. The package will first be available
+in devel and later in the applicable release; see the
+[Bioconductor installation guide](https://bioconductor.org/install/).
 
 ```{r bioconductor-installation, eval=FALSE}
 if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
 BiocManager::install("scDonorAudit")
-library(scDonorAudit)
-```
-
-For the current source version, install from a checked-out package directory
-after installing the dependencies listed in `DESCRIPTION`:
-
-```{r source-installation, eval=FALSE}
-install.packages(".", repos = NULL, type = "source")
 library(scDonorAudit)
 ```
 

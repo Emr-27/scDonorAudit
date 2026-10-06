@@ -11,9 +11,11 @@
 #' @param result Output of [assessDonorInfluence()].
 #' @param effect_threshold Optional positive absolute log2 fold-change threshold
 #'   for a material sign reversal.
-#' @return A `DataFrame` with one row per retained gene and cell type. If there
-#'   are no retained genes, the result has zero rows and the same 16 typed
-#'   columns, including a `CharacterList` for `max_influence_donors`.
+#' @return A `DataFrame` with one row per retained gene and cell type.
+#'   With no retained genes, the result has zero rows and the same 16 typed
+#'   columns.
+#'
+#'   The `max_influence_donors` column is a `CharacterList`.
 #'   See [scDonorAudit] and the installed `OUTPUT_SCHEMA.md` for field meanings.
 #' @examples
 #' count_file <- system.file('extdata', 'example_counts.csv',

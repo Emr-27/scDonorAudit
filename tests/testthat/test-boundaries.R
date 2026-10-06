@@ -1,3 +1,6 @@
+# Assisted-by: OpenAI Codex. DeepSeek V4.1 Flash assisted with selected
+# count-boundary and empty-summary tests; see inst/CODE_PROVENANCE.md.
+
 boundary_fixture <- function(paired = FALSE, collision_labels = FALSE) {
     set.seed(1103)
     donor <- if (paired) rep(paste0("d", 1:6), each = 2) else paste0("d", 1:12)

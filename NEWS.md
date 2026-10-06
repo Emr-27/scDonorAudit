@@ -1,3 +1,13 @@
+# scDonorAudit 0.99.6
+
+- Validate sparse and diagonal counts through public Matrix methods, retaining
+  count error codes and sparse storage; add storage-class regression coverage.
+- Clarify two-condition design limits, cell aggregation and coverage semantics,
+  and the distinction between current source and future Bioconductor installation.
+- Simplify development provenance and align source attribution pointers.
+- Make the output dictionary title version-independent and keep biocViews on
+  one line; public APIs and output schemas are unchanged.
+
 # scDonorAudit 0.99.5
 
 - Reject logical and pattern Matrix counts with an INVALID_COUNTS error,

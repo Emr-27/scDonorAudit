@@ -1,6 +1,6 @@
 Package: scDonorAudit
 Title: Audit Donor Influence in Single-Cell Pseudobulk Analyses
-Version: 0.99.5
+Version: 0.99.6
 Authors@R: person(
     given = "Fuhao",
     family = "Jiang",
@@ -19,8 +19,7 @@ BugReports: https://github.com/Emr-27/scDonorAudit/issues
 Encoding: UTF-8
 LazyData: false
 Roxygen: list(markdown = TRUE)
-biocViews: SingleCell, RNASeq, GeneExpression, DifferentialExpression,
-    QualityControl, Software
+biocViews: SingleCell, RNASeq, GeneExpression, DifferentialExpression, QualityControl, Software
 Imports:
     edgeR,
     ggplot2,

@@ -1,3 +1,5 @@
+## Assisted-by: OpenAI Codex; see inst/CODE_PROVENANCE.md.
+
 .scd_validate_registry <- function(registry, options) {
     observed_conditions <- sort(unique(registry$condition), method = "radix")
     expected <- sort(unname(options$contrast), method = "radix")
@@ -286,9 +288,12 @@
 #'   nonempty gene IDs. These requirements and audit metadata consistency are
 #'   rechecked on every call. Valid count edits, row subsets, and column
 #'   reordering are supported.
-#' @param design Either `'independent'` or `'paired'`.
+#' @param design Either `'independent'`, with exactly one registered sample per
+#'   donor, or `'paired'`, with exactly one registered sample per condition for
+#'   each donor.
 #' @param contrast Named character vector such as
-#'   `c(numerator='stim', denominator='ctrl')`.
+#'   `c(numerator='stim', denominator='ctrl')`. The sample registry must contain
+#'   exactly these two conditions.
 #' @param min_cells Optional minimum cell count per sample/cell type.
 #' @param covariates Names of sample-level covariates retained during
 #'   preparation.
@@ -296,8 +301,22 @@
 #'   `sample_id`, `donor_id`, `condition`, `cell_type`, `n_cells`, or `pb_id`.
 #' @param pair_policy `'strict'` blocks a cell type with an incomplete eligible
 #'   pair; `'complete_pairs'` drops both samples of that donor from that cell
-#'   type's baseline analysis.
+#'   type's baseline analysis. This handles cell-type eligibility, not an
+#'   incomplete pair in the sample registry; see [auditDesign()] for details.
 #' @param min_replicates_warn Threshold for a descriptive low-replication flag.
+#' @details Only two-condition independent or paired designs are supported.
+#'   Additional repeated measurements or multiple samples per donor and
+#'   condition are unsupported. For a paired design, every donor must have
+#'   both conditions in the sample registry before cell-type eligibility is
+#'   assessed. A registry with a missing condition for any donor is rejected
+#'   under either `pair_policy`.
+#'
+#'   Within a cell type, an observed sample is eligible if it also meets
+#'   `min_cells` when that threshold is set. If only one member of a registered
+#'   pair is eligible, `pair_policy` either blocks that cell type or excludes
+#'   the donor from its baseline cohort. Thus `'complete_pairs'` can handle a
+#'   missing cell-type pseudobulk or a sample below the cell-count threshold,
+#'   but cannot repair an incomplete sample registry.
 #' @return A `SimpleList` of `DataFrame` tables and resolved settings.
 #' @examples
 #' count_file <- system.file('extdata', 'example_counts.csv',

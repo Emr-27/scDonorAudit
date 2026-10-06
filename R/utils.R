@@ -40,8 +40,13 @@
         .scd_stop("INVALID_COUNTS", paste0(assay_name,
             " must contain finite non-negative integer-valued counts"))
     }
-    values <- if (methods::is(x, "sparseMatrix"))
-        x@x else as.vector(x)
+    values <- if (methods::is(x, "diagonalMatrix")) {
+        Matrix::diag(x)
+    } else if (methods::is(x, "sparseMatrix")) {
+        Matrix::summary(x, uniqT = FALSE)$x
+    } else {
+        as.vector(x)
+    }
     if (!is.numeric(values) || any(!is.finite(values)) || any(values <
         0) || any(values != floor(values))) {
         .scd_stop("INVALID_COUNTS", paste0(assay_name,

@@ -35,12 +35,15 @@ from the object; the table supplies them by \code{sample_id}.}
 containing the number of cells. It is computed for single-cell input.}
 }
 \value{
-A \code{SummarizedExperiment} with raw pseudobulk counts and audit
-metadata.
+A \code{SummarizedExperiment} with a raw \code{counts} assay, one row per
+input gene sorted by gene ID, and one column per observed sample/cell-type
+combination. \code{colData} maps columns to their sample and cell type; metadata
+stores the sample registry, coverage table, and preparation settings.
 }
 \description{
-Aggregates an in-memory \code{SingleCellExperiment} by sample and cell type, or
-checks an already aggregated \code{SummarizedExperiment}. Missing sample/cell-type
+Sums raw counts from an in-memory \code{SingleCellExperiment} by gene, sample
+and cell type, or checks a preaggregated \code{SummarizedExperiment}.
+Missing sample/cell-type
 combinations are recorded in the preparation metadata's \code{coverage} table,
 rather than inserted as zero-expression columns. A sample registry shows
 samples that are entirely absent from the input object.
@@ -56,6 +59,18 @@ For larger datasets, aggregate raw counts upstream and supply an in-memory
 \code{SummarizedExperiment}, a full sample registry, and \code{n_cells} if a minimum
 cell-count threshold will be used. Memory use also depends on the number
 of retained genes, cell types and planned donor deletions.
+
+Each output column represents one observed sample/cell-type combination.
+Its \code{colData} records \code{pb_id}, \code{sample_id}, \code{donor_id}, \code{condition},
+\code{cell_type}, \code{n_cells}, and any retained \code{sample_vars}. For single-cell
+input, \code{n_cells} is the number of cells summed into that column. For
+preaggregated input, it comes from the specified metadata column or is
+\code{NA} when \code{n_cells} is not supplied.
+
+\code{metadata(output)$scdonoraudit} stores the sample registry, preparation
+settings, and \code{coverage}. The coverage table crosses registered samples
+with the cell types present in the input. Missing combinations have
+\code{observed = FALSE} and \code{n_cells = NA}; they do not create count columns.
 }
 \examples{
 count_file <- system.file('extdata', 'example_counts.csv',

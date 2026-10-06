@@ -1,3 +1,5 @@
+# Assisted-by: OpenAI Codex; see inst/CODE_PROVENANCE.md.
+
 make_fixture <- function(paired = FALSE, missing_pair = FALSE) {
     set.seed(1103)
     donor <- if (paired) rep(paste0("d", 1:4), each = 2) else paste0("d", 1:8)

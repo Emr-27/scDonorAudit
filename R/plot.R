@@ -1,3 +1,5 @@
+# Assisted-by: OpenAI Codex; see inst/CODE_PROVENANCE.md.
+
 .scd_plot_theme <- function() {
     ggplot2::theme_minimal() + ggplot2::theme(plot.background =
         ggplot2::element_rect(fill = "white",

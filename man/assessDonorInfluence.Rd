@@ -23,10 +23,13 @@ nonempty gene IDs. These requirements and audit metadata consistency are
 rechecked on every call. Valid count edits, row subsets, and column
 reordering are supported.}
 
-\item{design}{Either \code{'independent'} or \code{'paired'}.}
+\item{design}{Either \code{'independent'}, with exactly one registered sample per
+donor, or \code{'paired'}, with exactly one registered sample per condition for
+each donor.}
 
 \item{contrast}{Named character vector such as
-\code{c(numerator='stim', denominator='ctrl')}.}
+\code{c(numerator='stim', denominator='ctrl')}. The sample registry must contain
+exactly these two conditions.}
 
 \item{min_cells}{Optional minimum cell count per sample/cell type.}
 
@@ -37,7 +40,8 @@ Names must be syntactic R names other than \code{.} and must not be
 
 \item{pair_policy}{\code{'strict'} blocks a cell type with an incomplete eligible
 pair; \code{'complete_pairs'} drops both samples of that donor from that cell
-type's baseline analysis.}
+type's baseline analysis. This handles cell-type eligibility, not an
+incomplete pair in the sample registry; see \code{\link[=auditDesign]{auditDesign()}} for details.}
 
 \item{min_replicates_warn}{Threshold for a descriptive low-replication flag.}
 

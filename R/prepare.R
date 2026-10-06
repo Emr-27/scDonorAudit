@@ -1,7 +1,10 @@
+## Assisted-by: OpenAI Codex; see inst/CODE_PROVENANCE.md.
+
 #' Prepare donor-aware pseudobulk counts
 #'
-#' Aggregates an in-memory `SingleCellExperiment` by sample and cell type, or
-#' checks an already aggregated `SummarizedExperiment`. Missing sample/cell-type
+#' Sums raw counts from an in-memory `SingleCellExperiment` by gene, sample
+#' and cell type, or checks a preaggregated `SummarizedExperiment`.
+#' Missing sample/cell-type
 #' combinations are recorded in the preparation metadata's `coverage` table,
 #' rather than inserted as zero-expression columns. A sample registry shows
 #' samples that are entirely absent from the input object.
@@ -22,13 +25,27 @@
 #'   `SummarizedExperiment`, a full sample registry, and `n_cells` if a minimum
 #'   cell-count threshold will be used. Memory use also depends on the number
 #'   of retained genes, cell types and planned donor deletions.
+#'
+#'   Each output column represents one observed sample/cell-type combination.
+#'   Its `colData` records `pb_id`, `sample_id`, `donor_id`, `condition`,
+#'   `cell_type`, `n_cells`, and any retained `sample_vars`. For single-cell
+#'   input, `n_cells` is the number of cells summed into that column. For
+#'   preaggregated input, it comes from the specified metadata column or is
+#'   `NA` when `n_cells` is not supplied.
+#'
+#'   `metadata(output)$scdonoraudit` stores the sample registry, preparation
+#'   settings, and `coverage`. The coverage table crosses registered samples
+#'   with the cell types present in the input. Missing combinations have
+#'   `observed = FALSE` and `n_cells = NA`; they do not create count columns.
 #' @param sample_vars Names of additional sample-level metadata columns to keep.
 #' @param sample_table Optional `data.frame` with canonical columns `sample_id`,
 #'   `donor_id`, `condition`, and selected `sample_vars`.
 #' @param n_cells For already aggregated input, name of the metadata column
 #'   containing the number of cells. It is computed for single-cell input.
-#' @return A `SummarizedExperiment` with raw pseudobulk counts and audit
-#'   metadata.
+#' @return A `SummarizedExperiment` with a raw `counts` assay, one row per
+#'   input gene sorted by gene ID, and one column per observed sample/cell-type
+#'   combination. `colData` maps columns to their sample and cell type; metadata
+#'   stores the sample registry, coverage table, and preparation settings.
 #' @importClassesFrom SingleCellExperiment SingleCellExperiment
 #' @examples
 #' count_file <- system.file('extdata', 'example_counts.csv',

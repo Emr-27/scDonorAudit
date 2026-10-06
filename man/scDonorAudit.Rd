@@ -21,6 +21,21 @@ provide a new false discovery rate guarantee.
 \code{\link[=plotInfluence]{plotInfluence()}} shows coverage, effects and changes with missingness.
 }
 
+\section{Supported designs}{
+
+The sample registry must contain exactly the two contrast conditions.
+An independent design requires one registered sample per donor. A paired
+design requires one registered sample per condition for every donor.
+Additional repeated measurements or multiple samples per donor and
+condition are unsupported.
+
+Paired registry entries must be complete under both pairing policies.
+Within a cell type, a missing pseudobulk or a sample below \code{min_cells} can
+leave only one eligible member of a pair. The default \code{pair_policy='strict'}
+blocks that cell type; \code{'complete_pairs'} excludes that donor from the cell
+type's baseline cohort. It does not repair missing pairs in the registry.
+}
+
 \section{Inputs and interoperability}{
 
 Inputs use \code{SingleCellExperiment} or \code{SummarizedExperiment} and in-memory
