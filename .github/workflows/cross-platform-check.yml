@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  PACKAGE_SHA: f6334928fa83b3b622ed1c36cc4df089bf1a05d5
+  PACKAGE_SHA: 6248c5ec3fe9744a5db110da1da9efee2b5dddb7
   PACKAGE_VERSION: 0.99.8
 
 jobs:
