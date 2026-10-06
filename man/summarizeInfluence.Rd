@@ -17,14 +17,17 @@ A \code{DataFrame} with one row per retained gene and cell type.
 With no retained genes, the result has zero rows and the same 16 typed
 columns.
 
+Minimum and maximum effects are observed ranges, not confidence intervals
+or significance tests. Unavailable effects remain missing.
+
 The \code{max_influence_donors} column is a \code{CharacterList}.
 See \link{scDonorAudit} and the installed \code{OUTPUT_SCHEMA.md} for field meanings.
 }
 \description{
-A missing or failed deletion remains in the planned denominator. Returned
-minimum and maximum effects are observed ranges, not confidence intervals
-or significance tests. Interpret a change only alongside \code{n_planned} and
-\code{n_effect_valid}; near-zero sign changes need the material threshold.
+Summaries combine observed effect changes with the coverage of valid
+deletion effects. Missing or failed deletions remain in \code{n_planned}.
+Interpret changes alongside \code{n_planned} and \code{n_effect_valid}; the material
+threshold distinguishes sign reversals from changes near zero.
 }
 \examples{
 count_file <- system.file('extdata', 'example_counts.csv',

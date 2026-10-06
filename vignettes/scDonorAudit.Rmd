@@ -21,52 +21,27 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height
 
 ## Introduction
 
-This package asks how a **fixed two-condition pseudobulk analysis** changes
-when one biological donor is removed. A large effect change is descriptive:
-it can reflect real donor heterogeneity, limited precision, or other data
-properties. The package does not decide that a donor should be excluded.
+scDonorAudit reports how a **fixed two-condition pseudobulk analysis** changes
+when one biological donor is omitted. It uses
+[edgeR](https://bioconductor.org/packages/edgeR) for the specified contrast and
+links the planned omissions to design viability, execution events, and observed
+gene-effect changes.
 
 ### Related work and scope
 
-[scuttle](https://bioconductor.org/packages/scuttle) provides cell aggregation.
-The following tools and analyses overlap with different parts of this workflow:
+The following tools and analyses address different parts of this workflow:
 
 | Tool or work | Primary task | Relationship to this package |
 |:--|:--|:--|
-| [muscat](https://bioconductor.org/packages/muscat) and [scran `pseudoBulkDGE()`](https://bioconductor.org/packages/scran) | Multi-sample or cell-type-wise differential expression | Supply established pseudobulk analysis approaches; the audit here concerns changes across a planned set of whole-donor omissions. |
-| [dreamlet](https://bioconductor.org/packages/dreamlet) | Pseudobulk analysis for complex designs | Already reports assay- and gene-level errors; this package adds a narrower two-condition deletion plan and its effect summary. |
+| [scuttle](https://bioconductor.org/packages/scuttle) | General cell aggregation with `aggregateAcrossCells()` | `preparePseudobulk()` records registered sample/cell-type coverage, including combinations with no observed counts. |
+| [muscat](https://bioconductor.org/packages/muscat) and [scran `pseudoBulkDGE()`](https://bioconductor.org/packages/scran) | Multi-sample or cell-type-wise differential expression | scDonorAudit specifies a two-condition independent or paired edgeR analysis and records changes across planned whole-donor omissions. |
+| [dreamlet](https://bioconductor.org/packages/dreamlet) | Pseudobulk analysis for complex designs and weights, with assay- and gene-level errors | scDonorAudit links membership, design diagnosis, warning/error events, per-sample normalization, and per-gene validity to each planned omission. |
 | [scFastDE](https://bioconductor.org/packages/devel/bioc/html/scFastDE.html) | Donor-weighted pseudobulk differential expression, including paired designs | Weighting and deletion sensitivity answer different questions. |
 | [SampleQC](https://github.com/wmacnair/SampleQC) | Multi-sample single-cell quality control | Quality metrics and changes to a specified DE contrast are distinct outputs. |
-| [Study-specific LODO pseudobulk analysis](https://pmc.ncbi.nlm.nih.gov/articles/PMC12991174/) | Refit after excluding each donor | Shows whole-donor deletion is not a new statistical idea. |
-
-These approaches overlap in inputs or aims. scDonorAudit uses
-[edgeR](https://bioconductor.org/packages/edgeR) for a specified two-condition
-contrast and adds a consistent audit of the planned donor omissions, design
-viability, execution events, and observed gene-effect changes. It is not a new
-differential-expression test or a donor-outlier classifier.
+| [Study-specific LODO pseudobulk analysis](https://pmc.ncbi.nlm.nih.gov/articles/PMC12991174/) | Refit after excluding each donor | scDonorAudit supplies the deletion ledger and summaries of observed change and valid coverage. |
 
 The source repository is
 [Emr-27/scDonorAudit](https://github.com/Emr-27/scDonorAudit).
-
-The following comparison concerns concrete workflow outputs, not numerical
-superiority. Broader DE packages can be used to implement custom deletion
-workflows; these entries describe how this package supplies the audit.
-
-- **Aggregation:** scuttle's `aggregateAcrossCells()` provides general cell
-  aggregation. `preparePseudobulk()` adds a registered sample/cell-type coverage
-  table, including combinations with no observed counts.
-- **DE analysis:** muscat provides cell-type-wise differential-state analysis;
-  dreamlet supports complex designs and weights. scDonorAudit implements one
-  edgeR backend for a specified two-condition independent or paired design.
-- **Omission plan:** this package enumerates whole-donor deletions within each
-  eligible cell type, fixes the baseline gene family and covariate meanings,
-  and retains failed or skipped runs in the planned denominator.
-- **Failure reporting:** dreamlet already exposes assay/gene errors.
-  scDonorAudit links membership, design diagnosis, warning/error events,
-  per-sample normalization and per-gene validity to each planned omission.
-- **Effect summary:** this package reports observed change and effect/test
-  coverage together. These are descriptive diagnostics, not donor quality
-  classifications or calibrated uncertainty intervals.
 
 ## Installation
 
@@ -86,8 +61,8 @@ library(scDonorAudit)
 
 ## Construct an auditable example
 
-The simulated counts below are only a workflow example, not a benchmark or
-biological result. Each column of the `SummarizedExperiment` is one observed
+The simulated counts below demonstrate registered coverage and paired-design
+checks. Each column of the `SummarizedExperiment` is one observed
 sample and cell type. Donor `d4` lacks a `B`-cell pseudobulk under `stim`.
 The full sample registry makes that absence visible.
 
@@ -109,8 +84,8 @@ contrast <- c(numerator = "stim", denominator = "ctrl")
 
 The named contrast fixes the sign: positive log2 fold-change means higher
 expression in `stim` than `ctrl`. The count assay must contain raw,
-non-negative integer counts. The package checks numeric validity but cannot
-prove the assay was not normalized upstream. Factor coding is fixed inside
+non-negative integer counts. The package checks numeric validity; users must
+confirm that the assay contains unnormalized counts. Factor coding is fixed inside
 the design, so a user's global `options("contrasts")` does not change the
 named effect's direction or scale.
 
@@ -123,6 +98,10 @@ the preaggregated `SummarizedExperiment` entry point, retaining the full sample
 registry and `n_cells`. Output memory also grows with genes and planned fits.
 
 ## Review the design before fitting
+
+For either pairing policy, the registry must contain one sample per condition
+for every donor. `complete_pairs` handles incomplete cell-type eligibility;
+the registry itself must remain paired.
 
 The default paired policy is strict. An incomplete eligible pair blocks that
 cell type without affecting other cell types.
@@ -149,8 +128,9 @@ head(as.data.frame(scDonorAudit::summarizeInfluence(result, effect_threshold = 0
 ```
 
 The summary's `n_planned` includes all eligible donor deletions, even failed
-refits. A maximum effect change is only the maximum among refits with valid
-effects. Missing effects are never converted into zero changes or
+or skipped refits. Read the maximum effect change alongside valid-effect
+coverage: it is the maximum among refits with comparable effects. Missing
+effects remain missing, rather than becoming zero changes or
 non-significant tests. Adjusted p values use a fixed baseline gene family
 within each cell type; they do not control error across cell types or deletion
 runs.
@@ -159,8 +139,7 @@ The analysis first fixes the eligible samples and complete-pair policy, then
 plans all whole-donor deletions. Genes retained by the full-data filter remain
 the comparison family in each refit. The named contrast and covariate meanings
 also stay fixed. Each successful deletion refit **re-estimates** library-size
-normalization and the edgeR model on its remaining samples. Thus the analysis
-reference is fixed, while fitted parameters are not.
+normalization and the edgeR model on its remaining samples.
 
 Read each gene in this order: is its baseline effect valid; how many deletions
 were planned; how many effects are comparable; then how large were the observed
@@ -171,6 +150,11 @@ for which a raw sign change is especially easy to overread. The minimum and
 maximum deletion effects are an **observed range**, not a confidence interval.
 An unavailable effect may reflect design failure, backend failure, or a
 gene-level status; it is not evidence of stability.
+
+Effect changes describe sensitivity to donor omission. A large change can
+reflect donor heterogeneity, limited precision, or other data properties; it
+does not establish that a donor is invalid or should be excluded. The p values
+come from the specified edgeR model, not a test that a donor is aberrant.
 
 ### Output dictionary
 
@@ -211,8 +195,7 @@ subset(as.data.frame(reduced[["spec"]]), select = c(cell_type, plan_status,
 ## Inspect figures
 
 The coverage plot shows included and excluded sample/cell-type combinations.
-Gene plots require explicit, stable gene IDs; they do not choose genes by
-apparent influence.
+Gene plots use the explicit, stable gene IDs supplied by the user.
 
 ```{r coverage-plot}
 scDonorAudit::plotInfluence(result, "coverage")
@@ -237,7 +220,6 @@ for `d8`, and a batch category observed only in `d1`. The baseline models
 are estimable. Omitting `d1` leaves the frozen batch column all zero, causing
 rank deficiency; the target contrast can still be estimable. The failed
 design is recorded as a skipped run. Other deletions provide valid effects.
-This is a deterministic reporting example, not a model of biological outliers.
 
 ```{r mixed-case}
 set.seed(995201)
@@ -276,8 +258,8 @@ For `T`, eight omissions are planned but only seven can supply effects;
 for `B`, seven are planned and six can supply effects. The missing `d8/B`
 combination was never eligible for that cell type's deletion plan. Omitting
 `d1` remains in each plan and appears as unavailable in the plot. The observed
-maximum is conditional on the valid deletions and is not evidence that the
-unavailable deletion would have had zero change. Backend failures use
+maximum covers the valid deletions; the unavailable deletion has no measured
+effect change. Backend failures use
 `execution_status="failed"`, `reason_code="BACKEND_ERROR"` and an error event;
 the same planned-denominator and missing-effect rules apply.
 
@@ -319,11 +301,8 @@ head(as.data.frame(scDonorAudit::summarizeInfluence(real_result))[, c("gene_id",
     "n_planned", "n_effect_valid", "max_abs_delta_observed")])
 ```
 
-This example demonstrates the data and audit workflow. Eight mice offer
-limited replication, especially after one is omitted. A large observed effect
-change can reflect biological heterogeneity or imprecision; it does not label
-a mouse for exclusion. The p values are those of the specified edgeR model,
-not a test that a donor is aberrant.
+Eight mice offer limited replication, especially after one is omitted. Read
+the observed changes with this sample size and the specified model in mind.
 
 ## Read the donor-deletion results
 
@@ -332,8 +311,7 @@ illustrate what the summary adds, consider genes with valid effects in all
 eight deletions and an absolute full-data log2 fold-change of at least 1.
 Order these genes by their largest observed absolute change, breaking ties by
 gene ID, and show the genes at the 10th and 90th percentile ranks. This rule
-selects examples with different sensitivity; it is not a performance test or
-a biological gene-selection procedure.
+selects examples with different sensitivity for interpreting the audit output.
 
 ```{r real-interpretation-selection}
 real_summary <- as.data.frame(scDonorAudit::summarizeInfluence(real_result))
@@ -354,9 +332,9 @@ knitr::kable(chosen[, c("illustration", "gene_id", "baseline_logFC", "n_planned"
     "n_effect_valid", "max_abs_delta_observed")], digits = 3)
 ```
 
-For the higher-change example, inspect every deletion instead of relying on
-one maximum. A missing or failed deletion would appear in the fit ledger and
-reduce `n_effect_valid`; it must not be interpreted as zero change.
+For the higher-change example, inspect every deletion alongside the maximum.
+A missing or failed deletion would appear in the fit ledger and reduce
+`n_effect_valid`.
 
 ```{r real-interpretation-refits}
 real_se <- real_result[["results"]][[chosen$cell_type[2L]]]
@@ -381,10 +359,9 @@ is `r sprintf("%.3f", chosen$baseline_logFC[2L])`; omitting
 lower-change example
 `r chosen$gene_id[1L]` has a maximum absolute change of
 `r sprintf("%.3f", chosen$max_abs_delta_observed[1L])`. These observations
-describe how sensitive the specified model is to donor omission in this
-dataset. They do not show that any mouse is erroneous, that a gene is robust
-in another dataset, or that the selected genes are representative of all
-genes.
+describe sensitivity to donor omission for the specified model, these eight
+mice, and the selected genes. The two genes illustrate the stated percentile
+ranks; conclusions about other genes or datasets require their own analysis.
 
 ## Method and data references
 
@@ -400,8 +377,8 @@ genes.
   Dataset attribution and transformations are in `extdata/README-crowell19.md`.
 
 Use `citation("edgeR")` for citations matching the installed backend version
-and `citation("scDonorAudit")` for the package citation. A separate methods
-paper is not claimed. The help-example data are synthetic; their generation
+and `citation("scDonorAudit")` for the package citation. The help-example data
+are synthetic; their generation
 is documented in `extdata/README-example.md`.
 
 ## Session information

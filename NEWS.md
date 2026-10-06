@@ -1,3 +1,12 @@
+# scDonorAudit 0.99.7
+
+- Organize the README around installation, a minimal workflow and result
+  interpretation; consolidate related-tool comparisons in the tutorial.
+- Place statistical and design limits alongside the results and inputs they
+  explain, reducing repeated disclaimers while preserving their meaning.
+- Clarify package help and example-data documentation; public interfaces,
+  executable analysis code and output schemas are unchanged.
+
 # scDonorAudit 0.99.6
 
 - Validate sparse and diagonal counts through public Matrix methods, retaining

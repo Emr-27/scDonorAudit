@@ -3,10 +3,10 @@
 
 #' Summarize observed donor influence on each gene
 #'
-#' A missing or failed deletion remains in the planned denominator. Returned
-#' minimum and maximum effects are observed ranges, not confidence intervals
-#' or significance tests. Interpret a change only alongside `n_planned` and
-#' `n_effect_valid`; near-zero sign changes need the material threshold.
+#' Summaries combine observed effect changes with the coverage of valid
+#' deletion effects. Missing or failed deletions remain in `n_planned`.
+#' Interpret changes alongside `n_planned` and `n_effect_valid`; the material
+#' threshold distinguishes sign reversals from changes near zero.
 #'
 #' @param result Output of [assessDonorInfluence()].
 #' @param effect_threshold Optional positive absolute log2 fold-change threshold
@@ -14,6 +14,9 @@
 #' @return A `DataFrame` with one row per retained gene and cell type.
 #'   With no retained genes, the result has zero rows and the same 16 typed
 #'   columns.
+#'
+#'   Minimum and maximum effects are observed ranges, not confidence intervals
+#'   or significance tests. Unavailable effects remain missing.
 #'
 #'   The `max_influence_donors` column is a `CharacterList`.
 #'   See [scDonorAudit] and the installed `OUTPUT_SCHEMA.md` for field meanings.

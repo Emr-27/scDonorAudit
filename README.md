@@ -1,44 +1,14 @@
 # scDonorAudit
 
-scDonorAudit reports how a two-condition single-cell pseudobulk analysis
-changes when each biological donor is omitted in turn. The results describe
-sensitivity to donor omission; they do not identify invalid donors or provide
-a new false discovery rate guarantee.
+scDonorAudit reports how a specified two-condition edgeR pseudobulk analysis
+changes when each biological donor is omitted in turn. It links planned
+omissions to design checks, fit outcomes, and gene-effect changes.
 
 The implemented entry points are `preparePseudobulk()`, `auditDesign()`,
 `assessDonorInfluence()`, `summarizeInfluence()` and `plotInfluence()`.
 
-Packages such as [scuttle](https://bioconductor.org/packages/scuttle)
-aggregate cells, while [muscat](https://bioconductor.org/packages/muscat)
-and [dreamlet](https://bioconductor.org/packages/dreamlet) provide broader
-pseudobulk differential-expression workflows. scDonorAudit uses edgeR for a
-specified two-condition analysis and adds a donor-deletion sensitivity ledger:
-which fits were planned, which ran, why others did not, and how each retained
-gene's effect changed. It is an audit layer, not a replacement DE test or a
-method for automatically excluding donors.
-
-| Task | Existing tool | scDonorAudit contribution |
-|:--|:--|:--|
-| Cell aggregation | scuttle | Registered coverage, including absent combinations |
-| Cell-type DE | muscat | Fixed family across whole-donor omission fits |
-| Complex designs | dreamlet | Narrow two-condition edgeR audit, not general mixed models |
-| Model fitting | edgeR | Linked design/execution ledger and per-run sample records |
-| Error reporting | dreamlet already reports errors | Original design reasons plus warnings and backend errors |
-| Interpretation | Custom DE diagnostics | Observed change alongside planned/valid coverage |
-
-This table compares supplied workflow outputs; it is not a performance ranking.
 See `?scDonorAudit`, the runnable vignette and the installed
 [output dictionary](inst/OUTPUT_SCHEMA.md) for fields, types and statuses.
-The vignette demonstrates missing coverage and skipped design failures alongside
-valid effects. Inputs must be in-memory numeric matrices; preaggregated raw
-counts in a `SummarizedExperiment` are supported. Delayed/disk-backed assays
-and logical/pattern matrices are unsupported.
-
-The vignette also runs an eight-mouse Astrocyte pseudobulk example derived
-from the public Crowell19 single-nucleus dataset. The bundled counts retain
-all 11,076 genes and are 0.47 MB; source, transformation, and CC BY 4.0
-attribution are documented in the
-[example data notes](inst/extdata/README-crowell19.md).
 
 ## Installation
 
@@ -64,7 +34,9 @@ BiocManager::install("scDonorAudit")
 ## Minimal local example
 
 The example uses already aggregated counts; each column is one observed
-sample and cell type.
+sample and cell type. Inputs must contain raw counts in in-memory numeric
+matrices; preaggregated counts in a `SummarizedExperiment` are supported.
+Delayed/disk-backed assays and logical/pattern matrices are unsupported.
 
 ```r
 set.seed(1103)
@@ -91,14 +63,51 @@ gene_summary <- scDonorAudit::summarizeInfluence(result,
 scDonorAudit::plotInfluence(result, "effect", cell_type = "T", gene_id = "g1")
 ```
 
+## Interpret the results
+
 Inspect `fit_ledger` and `result[["sample_membership"]]` before interpreting
 gene effects. `n_planned` counts all eligible donor deletions, including failed
-ones. `max_abs_delta_observed` describes only deletion fits with valid effects;
-missing fits remain missing. Adjusted p values use one fixed gene family per
-cell type and do not control error across cell types or deletion runs.
+or skipped runs. Read `max_abs_delta_observed` alongside the number of valid
+effects: it describes only deletion fits with comparable effects. Missing
+effects remain missing, rather than becoming zero changes or non-significant
+tests. The minimum and maximum deletion effects form an observed range, not
+a confidence interval.
+
+Genes retained by the baseline filter form one fixed comparison family per
+cell type. Each successful deletion fit re-estimates normalization and the
+edgeR model on its remaining samples. Adjusted p values apply within that
+family and do not control error across cell types or deletion runs. A large
+observed change can reflect donor heterogeneity or limited precision; it
+does not establish that a donor is invalid or should be excluded.
+
 The fit ledger keeps each run's original design diagnosis in
 `design_reason_code` even when a later baseline or backend problem prevents
 execution. See the vignette for the output dictionary and interpretation rules.
+
+The vignette demonstrates missing coverage and skipped design failures alongside
+valid effects. It also runs an eight-mouse Astrocyte pseudobulk example derived
+from the public Crowell19 single-nucleus dataset. The bundled counts retain
+all 11,076 genes and are 0.47 MB; source, transformation, and CC BY 4.0
+attribution are documented in the
+[example data notes](inst/extdata/README-crowell19.md).
+
+## Related tools
+
+Packages such as [scuttle](https://bioconductor.org/packages/scuttle)
+aggregate cells, while [muscat](https://bioconductor.org/packages/muscat)
+and [dreamlet](https://bioconductor.org/packages/dreamlet) provide broader
+pseudobulk differential-expression workflows. scDonorAudit uses edgeR for a
+specified two-condition independent or paired design and reports the planned
+donor omissions, their execution outcomes, and the observed effect changes.
+
+| Task | Existing tool | scDonorAudit output |
+|:--|:--|:--|
+| Cell aggregation | scuttle | Registered coverage, including absent combinations |
+| Cell-type DE | muscat | Fixed gene family across whole-donor omission fits |
+| Complex designs | dreamlet | Specified two-condition edgeR deletion plan |
+| Model fitting | edgeR | Linked design/execution ledger and per-run sample records |
+| Error reporting | dreamlet assay/gene errors | Original design reasons plus warnings and backend errors |
+| Interpretation | Custom DE diagnostics | Observed change alongside planned/valid coverage |
 
 AI assistance was used to develop code and documentation. The
 [development provenance](inst/CODE_PROVENANCE.md) records its scope.

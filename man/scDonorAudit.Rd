@@ -9,8 +9,8 @@
 scDonorAudit describes how a specified edgeR quasi-likelihood analysis
 changes after omitting each biological donor. It supports independent
 donors or paired donors with two conditions and optional sample covariates.
-The output does not classify donors as invalid, recommend exclusion, or
-provide a new false discovery rate guarantee.
+Planned omissions are linked to design checks, fit outcomes and observed
+gene-effect changes.
 }
 \section{Workflow}{
 
@@ -53,17 +53,30 @@ type. Library normalization and model parameters are re-estimated for every
 completed deletion. Failed or skipped omissions remain in \code{n_planned}.
 Missing effects are not zero changes; observed effect ranges are not
 confidence intervals. Empty summaries retain the same 16 typed columns.
+Read effect changes together with valid-fit coverage. A large change can
+reflect biological heterogeneity or limited precision; donor-exclusion
+decisions require independent quality information and the study design.
+Adjusted p values describe the edgeR tests within each cell type and run;
+they do not control error across cell types or deletion runs, or test
+whether a donor is invalid.
 The installed output dictionary lists all fields, types and status codes:
 \code{system.file('OUTPUT_SCHEMA.md', package = 'scDonorAudit')}.
 }
 
 \section{Data and methods}{
 
-Help examples use synthetic negative-binomial counts (seed 1103); see
-\code{extdata/README-example.md} and \code{scripts/create_synthetic_example.R}.
-The vignette also uses attributed Crowell19 Astrocyte pseudobulk counts;
-see \code{extdata/README-crowell19.md}. Method and data citations are in the
-vignette. For edgeR use \link[edgeR:edgeR]{edgeR::edgeR} and \code{citation('edgeR')}.
+Help examples use synthetic negative-binomial counts (seed 1103).
+
+Preparation details are in \code{extdata/README-example.md}.
+
+The generation script is \code{scripts/create_synthetic_example.R}.
+
+The vignette also uses attributed Crowell19 Astrocyte pseudobulk counts.
+
+Data notes are in \code{extdata/README-crowell19.md}.
+
+Method and data citations are in the vignette. For edgeR use
+\link[edgeR:edgeR]{edgeR::edgeR} and \code{citation('edgeR')}.
 }
 
 \seealso{
