@@ -9,7 +9,8 @@ permissions:
   contents: read
 
 env:
-  PACKAGE_SHA: e512915a139c590782c12768a1115b765ce865a2
+  PACKAGE_SHA: bc8ac09e9e612ca365f283678411b920d03e63f4
+  PACKAGE_VERSION: 0.99.7
 
 jobs:
   package-check:
@@ -38,29 +39,32 @@ jobs:
           extra-packages: any::rcmdcheck
           needs: check
       - name: Record candidate identity and environment
-        working-directory: package
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$PACKAGE_SHA"
-          git rev-parse HEAD > source-sha.txt
-          Rscript -e 'print(read.dcf("DESCRIPTION")[, c("Package", "Version")]); sessionInfo()' > environment.log
+          mkdir -p validation-output
+          test -z "$(git -C package status --porcelain)"
+          test "$(git -C package rev-parse HEAD)" = "$PACKAGE_SHA"
+          git -C package rev-parse HEAD > validation-output/source-sha.txt
+          Rscript -e 'd <- read.dcf("package/DESCRIPTION"); stopifnot(d[1, "Package"] == "scDonorAudit", d[1, "Version"] == Sys.getenv("PACKAGE_VERSION")); print(d[, c("Package", "Version")]); sessionInfo()' > validation-output/environment.log
       - name: Build and check candidate
-        working-directory: package
+        working-directory: validation-output
         shell: bash
         run: |
           set -euo pipefail
-          R CMD build . 2>&1 | tee build.log
+          R CMD build ../package 2>&1 | tee build.log
+          Rscript -e 'p <- Sys.glob("scDonorAudit_*.tar.gz"); stopifnot(length(p) == 1L, basename(p) == paste0("scDonorAudit_", Sys.getenv("PACKAGE_VERSION"), ".tar.gz")); members <- utils::untar(p, list=TRUE); writeLines(members, "tar-contents.txt"); bad <- grepl("(^|/)([^/]*[.]log|source-sha[.]txt|git-source-sha[.]txt|environment[.]log|tar-contents[.]txt|tar-sha256[.]txt|check|validation-output)(/|$)|[.](Rcheck|BiocCheck)(/|$)", members); stopifnot(!any(bad), any(grepl("^scDonorAudit/man/.*[.]Rd$", members)), any(grepl("^scDonorAudit/inst/doc/.*[.]html$", members)), all(paste0("scDonorAudit/inst/extdata/", c("example_counts.csv", "example_samples.csv", "crowell19_astrocyte_counts.csv", "crowell19_astrocyte_samples.csv")) %in% members))'
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum scDonorAudit_*.tar.gz > tar-sha256.txt
+          else
+            shasum -a 256 scDonorAudit_*.tar.gz > tar-sha256.txt
+          fi
           Rscript -e 'p <- Sys.glob("scDonorAudit_*.tar.gz"); stopifnot(length(p) == 1L); a <- "--no-build-vignettes"; if (Sys.getenv("RUNNER_OS") != "Linux") a <- c(a, "--no-manual"); rcmdcheck::rcmdcheck(p, args=a, error_on="warning", check_dir="check")' 2>&1 | tee check.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: check-${{ matrix.os }}
-          path: |
-            package/*.log
-            package/source-sha.txt
-            package/*.tar.gz
-            package/check
+          path: validation-output/
 
   bioc-devel:
     name: Bioconductor devel / Linux / new package
@@ -82,23 +86,33 @@ jobs:
         run: |
           Rscript -e 'options(repos=BiocManager::repositories()); BiocManager::install(c("BiocCheck", "remotes", "rcmdcheck"), ask=FALSE, update=FALSE); remotes::install_deps(".", dependencies=TRUE, upgrade="never")'
       - name: Verify source and devel environment
-        working-directory: package
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$PACKAGE_SHA"
-          git rev-parse HEAD > source-sha.txt
-          Rscript -e 'print(read.dcf("DESCRIPTION")[, c("Package", "Version")]); sessionInfo(); print(BiocManager::version())' > environment.log
+          mkdir -p validation-output
+          test -z "$(git -C package status --porcelain)"
+          test "$(git -C package rev-parse HEAD)" = "$PACKAGE_SHA"
+          test -z "$(git -C git-source status --porcelain)"
+          test "$(git -C git-source rev-parse HEAD)" = "$PACKAGE_SHA"
+          git -C package rev-parse HEAD > validation-output/source-sha.txt
+          git -C git-source rev-parse HEAD > validation-output/git-source-sha.txt
+          Rscript -e 'for (path in c("package", "git-source")) { d <- read.dcf(file.path(path, "DESCRIPTION")); stopifnot(d[1, "Package"] == "scDonorAudit", d[1, "Version"] == Sys.getenv("PACKAGE_VERSION")); print(d[, c("Package", "Version")]) }; sessionInfo(); print(BiocManager::version())' > validation-output/environment.log
       - name: Build and check candidate
-        working-directory: package
+        working-directory: validation-output
         shell: bash
         run: |
           set -euo pipefail
-          R CMD build . 2>&1 | tee build.log
+          R CMD build ../package 2>&1 | tee build.log
+          Rscript -e 'p <- Sys.glob("scDonorAudit_*.tar.gz"); stopifnot(length(p) == 1L, basename(p) == paste0("scDonorAudit_", Sys.getenv("PACKAGE_VERSION"), ".tar.gz")); members <- utils::untar(p, list=TRUE); writeLines(members, "tar-contents.txt"); bad <- grepl("(^|/)([^/]*[.]log|source-sha[.]txt|git-source-sha[.]txt|environment[.]log|tar-contents[.]txt|tar-sha256[.]txt|check|validation-output)(/|$)|[.](Rcheck|BiocCheck)(/|$)", members); stopifnot(!any(bad), any(grepl("^scDonorAudit/man/.*[.]Rd$", members)), any(grepl("^scDonorAudit/inst/doc/.*[.]html$", members)), all(paste0("scDonorAudit/inst/extdata/", c("example_counts.csv", "example_samples.csv", "crowell19_astrocyte_counts.csv", "crowell19_astrocyte_samples.csv")) %in% members))'
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum scDonorAudit_*.tar.gz > tar-sha256.txt
+          else
+            shasum -a 256 scDonorAudit_*.tar.gz > tar-sha256.txt
+          fi
           Rscript -e 'p <- Sys.glob("scDonorAudit_*.tar.gz"); stopifnot(length(p) == 1L); rcmdcheck::rcmdcheck(p, args="--no-manual", error_on="warning", check_dir="check")' 2>&1 | tee check.log
       - name: Check Git clone and new package tarball
         if: success() || failure()
-        working-directory: package
+        working-directory: validation-output
         shell: bash
         run: |
           set -euo pipefail
@@ -108,9 +122,4 @@ jobs:
         if: always()
         with:
           name: check-bioc-devel
-          path: |
-            package/*.log
-            package/source-sha.txt
-            package/*.tar.gz
-            package/check
-            package/*.BiocCheck
+          path: validation-output/
