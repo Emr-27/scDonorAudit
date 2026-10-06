@@ -53,7 +53,15 @@ jobs:
         run: |
           set -euo pipefail
           R CMD build ../package 2>&1 | tee build.log
-          Rscript -e 'p <- Sys.glob("scDonorAudit_*.tar.gz"); stopifnot(length(p) == 1L, basename(p) == paste0("scDonorAudit_", Sys.getenv("PACKAGE_VERSION"), ".tar.gz")); members <- utils::untar(p, list=TRUE); writeLines(members, "tar-contents.txt"); bad <- grepl("(^|/)([^/]*[.]log|source-sha[.]txt|git-source-sha[.]txt|environment[.]log|tar-contents[.]txt|tar-sha256[.]txt|check|validation-output)(/|$)|[.](Rcheck|BiocCheck)(/|$)", members); stopifnot(!any(bad), any(grepl("^scDonorAudit/man/.*[.]Rd$", members)), any(grepl("^scDonorAudit/inst/doc/.*[.]html$", members)), all(paste0("scDonorAudit/inst/extdata/", c("example_counts.csv", "example_samples.csv", "crowell19_astrocyte_counts.csv", "crowell19_astrocyte_samples.csv")) %in% members))'
+          cat > verify-tar.R <<'RSCRIPT'
+          p <- Sys.glob("scDonorAudit_*.tar.gz")
+          stopifnot(length(p) == 1L, basename(p) == paste0("scDonorAudit_", Sys.getenv("PACKAGE_VERSION"), ".tar.gz"))
+          members <- utils::untar(p, list=TRUE)
+          writeLines(members, "tar-contents.txt")
+          bad <- grepl("(^|/)([^/]*[.]log|source-sha[.]txt|git-source-sha[.]txt|environment[.]log|tar-contents[.]txt|tar-sha256[.]txt|check|validation-output)(/|$)|[.](Rcheck|BiocCheck)(/|$)", members)
+          stopifnot(!any(bad), any(grepl("^scDonorAudit/man/.*[.]Rd$", members)), any(grepl("^scDonorAudit/inst/doc/.*[.]html$", members)), all(paste0("scDonorAudit/inst/extdata/", c("example_counts.csv", "example_samples.csv", "crowell19_astrocyte_counts.csv", "crowell19_astrocyte_samples.csv")) %in% members))
+          RSCRIPT
+          Rscript verify-tar.R
           if command -v sha256sum >/dev/null 2>&1; then
             sha256sum scDonorAudit_*.tar.gz > tar-sha256.txt
           else
@@ -103,7 +111,15 @@ jobs:
         run: |
           set -euo pipefail
           R CMD build ../package 2>&1 | tee build.log
-          Rscript -e 'p <- Sys.glob("scDonorAudit_*.tar.gz"); stopifnot(length(p) == 1L, basename(p) == paste0("scDonorAudit_", Sys.getenv("PACKAGE_VERSION"), ".tar.gz")); members <- utils::untar(p, list=TRUE); writeLines(members, "tar-contents.txt"); bad <- grepl("(^|/)([^/]*[.]log|source-sha[.]txt|git-source-sha[.]txt|environment[.]log|tar-contents[.]txt|tar-sha256[.]txt|check|validation-output)(/|$)|[.](Rcheck|BiocCheck)(/|$)", members); stopifnot(!any(bad), any(grepl("^scDonorAudit/man/.*[.]Rd$", members)), any(grepl("^scDonorAudit/inst/doc/.*[.]html$", members)), all(paste0("scDonorAudit/inst/extdata/", c("example_counts.csv", "example_samples.csv", "crowell19_astrocyte_counts.csv", "crowell19_astrocyte_samples.csv")) %in% members))'
+          cat > verify-tar.R <<'RSCRIPT'
+          p <- Sys.glob("scDonorAudit_*.tar.gz")
+          stopifnot(length(p) == 1L, basename(p) == paste0("scDonorAudit_", Sys.getenv("PACKAGE_VERSION"), ".tar.gz"))
+          members <- utils::untar(p, list=TRUE)
+          writeLines(members, "tar-contents.txt")
+          bad <- grepl("(^|/)([^/]*[.]log|source-sha[.]txt|git-source-sha[.]txt|environment[.]log|tar-contents[.]txt|tar-sha256[.]txt|check|validation-output)(/|$)|[.](Rcheck|BiocCheck)(/|$)", members)
+          stopifnot(!any(bad), any(grepl("^scDonorAudit/man/.*[.]Rd$", members)), any(grepl("^scDonorAudit/inst/doc/.*[.]html$", members)), all(paste0("scDonorAudit/inst/extdata/", c("example_counts.csv", "example_samples.csv", "crowell19_astrocyte_counts.csv", "crowell19_astrocyte_samples.csv")) %in% members))
+          RSCRIPT
+          Rscript verify-tar.R
           if command -v sha256sum >/dev/null 2>&1; then
             sha256sum scDonorAudit_*.tar.gz > tar-sha256.txt
           else
