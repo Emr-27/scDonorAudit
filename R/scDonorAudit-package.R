@@ -54,13 +54,10 @@
 #'
 #' @section Data and methods:
 #' Help examples use synthetic negative-binomial counts (seed 1103).
-#' Notes: `extdata/README-example.md`.
-#'
-#' Generation script: `scripts/create_synthetic_example.R`.
-#'
-#' Crowell19 Astrocyte pseudobulk data notes: `extdata/README-crowell19.md`.
-#' Method and data citations are in the vignette. For edgeR use
-#' [edgeR::edgeR] and `citation('edgeR')`.
+#' Bundled data notes and generation scripts are installed in `extdata`
+#' and `scripts`. The vignette uses attributed Crowell19 Astrocyte
+#' pseudobulk counts and includes method and data citations. For edgeR,
+#' use [edgeR::edgeR] and `citation('edgeR')`.
 #'
 #' @seealso
 #' - [preparePseudobulk()]

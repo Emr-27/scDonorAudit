@@ -66,13 +66,10 @@ The installed output dictionary lists all fields, types and status codes:
 \section{Data and methods}{
 
 Help examples use synthetic negative-binomial counts (seed 1103).
-Notes: \code{extdata/README-example.md}.
-
-Generation script: \code{scripts/create_synthetic_example.R}.
-
-Crowell19 Astrocyte pseudobulk data notes: \code{extdata/README-crowell19.md}.
-Method and data citations are in the vignette. For edgeR use
-\link[edgeR:edgeR]{edgeR::edgeR} and \code{citation('edgeR')}.
+Bundled data notes and generation scripts are installed in \code{extdata}
+and \code{scripts}. The vignette uses attributed Crowell19 Astrocyte
+pseudobulk counts and includes method and data citations. For edgeR,
+use \link[edgeR:edgeR]{edgeR::edgeR} and \code{citation('edgeR')}.
 }
 
 \seealso{
