@@ -163,6 +163,46 @@ test_that("summary retains ties and the planned denominator", {
     expect_equal(summary$n_material_reversal[third], 0L)
 })
 
+test_that("summary thresholds preserve boundary and NULL semantics", {
+    cases <- data.frame(
+        baseline = c(0.8, 0.5, 0.8, 0.2),
+        deletion = c(-0.7, -0.7, -0.5, -0.8),
+        material = c(1L, 0L, 0L, 0L),
+        near_zero = c(FALSE, TRUE, FALSE, TRUE))
+    cases <- rbind(cases, transform(cases,
+        baseline = -baseline, deletion = -deletion))
+    pb <- make_fixture()
+    result <- assessDonorInfluence(pb, "independent",
+        c(numerator = "stim", denominator = "ctrl"))
+    se <- result[["results"]][["T"]]
+    case_rows <- seq_len(nrow(cases))
+    for (field in c("logFC", "effect_valid", "test_valid")) {
+        values <- SummarizedExperiment::assay(se, field)
+        values[case_rows, ] <- if (field == "logFC") NA_real_ else FALSE
+        values[case_rows, 1L] <- if (field == "logFC")
+            cases$baseline else TRUE
+        values[case_rows, 2L] <- if (field == "logFC")
+            cases$deletion else TRUE
+        SummarizedExperiment::assay(se, field) <- values
+    }
+    result[["results"]][["T"]] <- se
+    summary <- summarizeInfluence(result, effect_threshold = 0.5)
+    rows <- match(rownames(se)[case_rows], summary$gene_id)
+    expect_identical(summary$n_material_reversal[rows], cases$material)
+    expect_identical(summary$baseline_near_zero[rows], cases$near_zero)
+
+    without_threshold <- summarizeInfluence(result, effect_threshold = NULL)
+    expect_identical(without_threshold$n_material_reversal,
+                     rep(NA_integer_, nrow(summary)))
+    expect_identical(without_threshold$baseline_near_zero,
+                     rep(NA, nrow(summary)))
+    other_columns <- setdiff(names(summary),
+        c("n_material_reversal", "baseline_near_zero"))
+    expect_length(other_columns, 14L)
+    expect_identical(without_threshold[, other_columns, drop = FALSE],
+                     summary[, other_columns, drop = FALSE])
+})
+
 test_that("low cell count excludes both sides of an incomplete pair", {
     pb <- make_fixture(paired = TRUE)
     cd <- SummarizedExperiment::colData(pb)

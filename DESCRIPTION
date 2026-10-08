@@ -1,6 +1,6 @@
 Package: scDonorAudit
 Title: Audit Donor Influence in Single-Cell Pseudobulk Analyses
-Version: 0.99.8
+Version: 0.99.9
 Authors@R: person(
     given = "Fuhao",
     family = "Jiang",

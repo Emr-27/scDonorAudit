@@ -42,6 +42,19 @@ design run rows with non-OK reasons; fit `issues` is the event table below.
 | `gene_filter` | character `cell_type`, `gene_id`, `filter_status`; logical `kept`; includes every input gene in every cell type |
 | fit `issues` | character `cell_type`, `run_id`, `stage`, `reason_code`, `message`; zero or more events per run |
 
+The unique run key in `runs` and `fits` is `cell_type` + `run_id`; use both
+fields when joining run-level tables because run IDs are reused across cell
+types. The unique sample key in `fit_samples` is `cell_type` + `run_id` +
+`sample_id`. This table contains samples from completed fits only, not
+failed or skipped runs. `sample_membership` is unique by `cell_type` +
+`sample_id` and records baseline inclusion decisions, not per-deletion
+sample membership.
+
+Fitted `issues` can have multiple events for the same `cell_type` + `run_id`.
+Joining it to `fits` with these fields can repeat fit rows; those rows
+represent events, not additional runs. In contrast, audit `issues` contains
+the non-OK subset of `runs`, with one row per affected run.
+
 `n_planned` counts omissions, excluding the baseline. An incomplete strict
 pair yields `plan_status=not_created`, `n_planned=NA` and only a blocked baseline
 row. Otherwise a plan is `created`, even if fitting is blocked later.
@@ -111,6 +124,13 @@ and types, including when no genes survive or all cell types are blocked.
 | `complete_effect_coverage` | logical | valid baseline, positive planned count and comparable effect count equals planned count |
 | `complete_test_coverage` | logical | valid baseline test, positive planned count and comparable test count equals planned count |
 | `max_influence_donors` | IRanges CharacterList | donors tied within 1e-8 * max(1, largest change); empty if unavailable |
+
+For example, with `effect_threshold = 0.5`, a change from 0.8 to -0.7 is a
+material reversal, but 0.5 to -0.7 is not: equality does not satisfy the
+strict threshold. The latter baseline has `baseline_near_zero = TRUE`.
+With `effect_threshold = NULL`, `n_material_reversal` is integer `NA` and
+`baseline_near_zero` is logical `NA`; all other summary columns are still
+calculated.
 
 ## Reasons and input errors
 

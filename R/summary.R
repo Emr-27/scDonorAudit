@@ -7,7 +7,14 @@
 #'
 #' @param result Output of [assessDonorInfluence()].
 #' @param effect_threshold Optional positive absolute log2 fold-change threshold
-#'   for a material sign reversal.
+#'   for a material sign reversal. The baseline and deletion effects must have
+#'   opposite signs, with both absolute values strictly greater than the
+#'   threshold. For a valid baseline, `baseline_near_zero` uses
+#'   `abs(baseline_logFC) <= effect_threshold`. At a threshold of 0.5,
+#'   a change from 0.8 to -0.7 is material, but 0.5 to -0.7 is not.
+#'   With `NULL`, `n_material_reversal` is integer `NA` and
+#'   `baseline_near_zero` is logical `NA`; other summary columns are still
+#'   calculated.
 #' @return A `DataFrame` with one row per retained gene and cell type.
 #'   With no retained genes, the result has zero rows and the same 16 typed
 #'   columns.

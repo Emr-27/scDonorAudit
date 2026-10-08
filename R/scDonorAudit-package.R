@@ -1,5 +1,4 @@
-# Development provenance for implementation, tests and documentation
-# is recorded in inst/CODE_PROVENANCE.md.
+# Development provenance is recorded in inst/CODE_PROVENANCE.md.
 
 #' Audit donor omission in two-condition pseudobulk analyses
 #'

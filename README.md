@@ -15,11 +15,22 @@ From an installation of a built source archive, open the evaluated tutorial with
 ## Installation
 
 The package is currently available from its source repository. Download or
-clone this repository, then start R in the directory containing `DESCRIPTION`.
-With the dependencies in that file installed, run:
+clone it as `scDonorAudit`. Prepare the matching R/Bioconductor environment
+using the [Bioconductor installation guide](https://bioconductor.org/install/),
+and install the dependencies listed in `DESCRIPTION` and the tools needed to
+build the vignette. From the directory containing the `scDonorAudit` folder,
+build and install the source archive, which includes the evaluated tutorial:
+
+```sh
+R CMD build scDonorAudit
+R CMD INSTALL scDonorAudit_0.99.9.tar.gz
+```
+
+Then start R and open the installed tutorial:
 
 ```r
-install.packages(".", repos = NULL, type = "source")
+library(scDonorAudit)
+vignette("scDonorAudit", package = "scDonorAudit")
 ```
 
 After acceptance and a successful Bioconductor build, the package can be

@@ -1,3 +1,12 @@
+# scDonorAudit 0.99.9
+
+- Correct development provenance to the maintainer-confirmed assistance scope.
+- Clarify strict material-reversal thresholds, equality boundaries and NULL
+  summaries; add focused regression coverage.
+- Document table keys and distinguish audit issues from fitted event records.
+- Complete the source build, installation and evaluated-tutorial instructions.
+- Public APIs, numerical analysis, output schemas and example data are unchanged.
+
 # scDonorAudit 0.99.8
 
 - Document fixed backend settings, filtering defaults, design-audit components

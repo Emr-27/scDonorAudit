@@ -10,7 +10,14 @@ summarizeInfluence(result, effect_threshold = NULL)
 \item{result}{Output of \code{\link[=assessDonorInfluence]{assessDonorInfluence()}}.}
 
 \item{effect_threshold}{Optional positive absolute log2 fold-change threshold
-for a material sign reversal.}
+for a material sign reversal. The baseline and deletion effects must have
+opposite signs, with both absolute values strictly greater than the
+threshold. For a valid baseline, \code{baseline_near_zero} uses
+\code{abs(baseline_logFC) <= effect_threshold}. At a threshold of 0.5,
+a change from 0.8 to -0.7 is material, but 0.5 to -0.7 is not.
+With \code{NULL}, \code{n_material_reversal} is integer \code{NA} and
+\code{baseline_near_zero} is logical \code{NA}; other summary columns are still
+calculated.}
 }
 \value{
 A \code{DataFrame} with one row per retained gene and cell type.
